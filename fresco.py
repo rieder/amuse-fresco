@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*- 
 import os,sys
 
 import numpy as np
@@ -13,7 +14,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 def calculate_effective_temperature(luminosity, radius):
-    return ((luminosity/(constants.four_pi_stefan_boltzmann*radius**2))**.25).in_(units.K)
+    return ( (luminosity/(constants.four_pi_stefan_boltzmann*radius**2)
+        )**.25).in_(units.K)
 
 def image_from_stars(
         stars,
@@ -30,7 +32,8 @@ def image_from_stars(
                     stars.radius,
                     )
         except:
-            print "Calculating luminosity/temperature for %s old stars..."%(age)
+            print "Calculating luminosity/temperature for %s old stars..."%(
+                    age )
             from amuse.community.sse.interface import SSE
             se = SSE()
             se.particles.add_particles(stars)
@@ -51,23 +54,24 @@ def image_from_stars(
             stars,
             dryrun      = False,
             image_width = image_width,
-            multi_psf   = True,
+            multi_psf   = False,#True,
             image_size  = image_size,
             percentile  = percentile,
             sourcebands = "ubvri",
             )
     return rgb['pixels']
-    
+
 
 if __name__=="__main__":
     filename    = sys.argv[1]
     
     length_unit = units.parsec
-    dpi         = 1200
+    dpi         = 600
     image_width_arcsec = 160
 
     image_width = 10. | units.parsec #FIXME this should depend on the distance!
                                      # size = fixed at nr of arcmin
+                                     
     image_size  = [2048,2048] #FIXME the psf is fixed pixel size, so the pixels
     # in the image here reflects how much pixels will be spread!
     # In principle, this should be a fixed number, equal to the number of
@@ -96,7 +100,7 @@ if __name__=="__main__":
     imagefilename = sys.argv[1]+".png"
 
     fig = plt.figure()
-    ax = fig.add_subplot(111)
+    ax = fig.add_subplot(1,1,1)
     ax.set_xlim([xmin,xmax])
     ax.set_ylim([ymin,ymax])
     ax.set_xlabel("[%s]"%(length_unit))

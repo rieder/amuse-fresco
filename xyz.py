@@ -5,6 +5,8 @@ import numpy
 from amuse.units import units
 
 this_dir, this_filename = os.path.split(__file__)
+if this_dir == "":
+    this_dir = "."
 instrument = "WFPC_II_WFC3"
 data_dir = this_dir + "/data/" + instrument + "/"
 

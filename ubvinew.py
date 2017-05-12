@@ -2,15 +2,14 @@ import os
 
 import numpy
 
-#from numpy.fft import fft2, ifft2
-from scipy.fftpack import fft2, ifft2
+from numpy.fft import fft2, ifft2
+#from scipy.fftpack import fft2, ifft2
 from numpy import log
 
 from amuse.units import units,constants,nbody_system
 from amuse.io import read_set_from_file
 from amuse.community.fi.interface import FiMap
 
-from scipy import ndimage
 #from PIL import Image
 
 import logging
@@ -20,11 +19,31 @@ from filters3 import filter_band_flux,filter_data
 #from filters3 import __filter_band_flux__,filter_data
 from xyz import xyz_data
 from blackbody import B_lambda
-from color_converter import ColorConverter,XYZ_to_sRGB_linear,sRGB_linear_to_sRGB
+from color_converter import (ColorConverter,
+        XYZ_to_sRGB_linear,sRGB_linear_to_sRGB)
 
 import time
 
+from astropy.convolution import convolve, convolve_fft
+
 def Convolve(
+        image,
+        kernel,
+        MinPad  = True, 
+        pad     = True,
+        ):
+    #import scipy.fftpack
+    #result = convolve_fft(
+    #        image,
+    #        kernel,
+    #        boundary='fill',
+    #        fftn=scipy.fftpack.fft, ifftn=scipy.fftpack.ifft,
+    #        )
+    result = convolve_fft(image,kernel,boundary='fill')
+    #result = convolve(image,kernel)
+    return result
+
+def _Convolve(
         image1, 
         image2, 
         MinPad  = True, 
@@ -57,8 +76,8 @@ def Convolve(
         r       = 2**pr2
         c       = 2**pc2
   	
-    #numpy fft has the padding built in, which can save us some steps
-    #here. The thing is the s(hape) parameter:
+    # numpy fft has the padding built in, which can save us some steps here.
+    # The thing is the s(hape) parameter:
     #fftimage = FFt(image1,s=(r,c)) * FFt(image2,s=(r,c))
     fftimage    = (
             FFt(
@@ -77,16 +96,20 @@ def Convolve(
         return (iFFt(fftimage)).real
 
 def calculate_effective_temperature(luminosity, radius):
-    return ((luminosity/(constants.four_pi_stefan_boltzmann*radius**2))**.25).in_(units.K)
+    return ( (luminosity/(constants.four_pi_stefan_boltzmann*radius**2))**.25
+            ).in_(units.K)
 
-import pyfits
+import astropy.io.fits as pyfits
 
 psf = dict()
 
 for band in "ubvri":
     for i in range(4):
         instrument = "WFPC_II_WFC3"
-        datadir = os.path.split(__file__)[0] + "/data/" + instrument + "/"
+        this_dir = os.path.split(__file__)[0]
+        if this_dir == "":
+            this_dir = "."
+        datadir = this_dir + "/data/" + instrument + "/"
         f   = pyfits.open(datadir+band+"%2.2i.fits"%i)#FIXME use some relative dir
         psf[band+str(i)]    = numpy.array(f[0].data)
 
@@ -146,7 +169,10 @@ def rgb_frame(
 
     raw_images  = dict()
     for band in sourcebands:  
-        mapper.particles.weight = getattr(stars, band+"_band").value_in(units.LSun)
+        mapper.particles.weight = getattr(
+                stars, 
+                band+"_band"
+                ).value_in(units.LSun)
         im                      = mapper.image.pixel_value
         raw_images[band]        = im
     
@@ -164,17 +190,16 @@ def rgb_frame(
         w3  = numpy.outer(a,1.-b)
         w4  = numpy.outer(1.-a,1.-b)
         for key,val in raw_images.items():
-            xpad,ypad   = psf[key+'0'].shape
-            im1         = Convolve( val ,psf[key+'0'])[xpad/2:-xpad/2,ypad/2:-ypad/2]
-            im2         = Convolve( val ,psf[key+'1'])[xpad/2:-xpad/2,ypad/2:-ypad/2]
-            im3         = Convolve( val ,psf[key+'2'])[xpad/2:-xpad/2,ypad/2:-ypad/2]
-            im4         = Convolve( val ,psf[key+'3'])[xpad/2:-xpad/2,ypad/2:-ypad/2]
+            #xpad,ypad   = psf[key+'0'].shape
+            im1         = Convolve( val ,psf[key+'0'])#[xpad/2:-xpad/2,ypad/2:-ypad/2]
+            im2         = Convolve( val ,psf[key+'1'])#[xpad/2:-xpad/2,ypad/2:-ypad/2]
+            im3         = Convolve( val ,psf[key+'2'])#[xpad/2:-xpad/2,ypad/2:-ypad/2]
+            im4         = Convolve( val ,psf[key+'3'])#[xpad/2:-xpad/2,ypad/2:-ypad/2]
             convolved_images[key]   = w1*im1+w2*im2+w3*im3+w4*im4
     else:
         for key,val in raw_images.items():
-            xpad,ypad   = psf[key+'0'].shape
-            im1         = Convolve( val ,psf[key+'0'])[xpad/2:-xpad/2,ypad/2:-ypad/2]
-            #im1         = ndimage.filters.convolve(val ,psf[key+str(0)])[xpad/2:-xpad/2,ypad/2:-ypad/2]
+            #xpad,ypad   = psf[key+'0'].shape
+            im1         = Convolve( val ,psf[key+'0'])#[xpad/2:-xpad/2,ypad/2:-ypad/2]
             convolved_images[key]   = im1
               
     print "..conversion to rgb"
@@ -200,7 +225,7 @@ def rgb_frame(
     if dryrun or vmax is None:
         flat_sorted = numpy.sort(srgb_l.flatten())
         n           = len(flat_sorted)
-        vmax        = flat_sorted[1.-3*(1.-percentile)*n]
+        vmax        = flat_sorted[int(1.-3*(1.-percentile)*n)]
         print "vmax:", vmax
     if dryrun:
         return vmax
@@ -208,6 +233,7 @@ def rgb_frame(
     conv_lin_to_sRGB    = sRGB_linear_to_sRGB()
     
     srgb    = conv_lin_to_sRGB.convert(srgb_l/vmax)
+    #print srgb.shape()
 
     #r       = srgb[0,:,:].transpose()
     #g       = srgb[1,:,:].transpose()
@@ -218,6 +244,7 @@ def rgb_frame(
 
     rgb = numpy.zeros(image_size[0]*image_size[1]*3)
     rgb = rgb.reshape(image_size[0],image_size[1],3)
+    #print image_size[0], image_size[1], rgb.shape, r.shape, g.shape, b.shape
     rgb[:,:,0] = r
     rgb[:,:,1] = g
     rgb[:,:,2] = b
