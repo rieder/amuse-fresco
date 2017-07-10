@@ -120,30 +120,16 @@ def rgb_frame(
 
     print "luminosities.."
 
-    allstars = stars
-    # stars = stars.select(lambda x: x > 0.10|units.LSun, ["luminosity"])
-    print "Using %i stars out of %i" % (len(stars), len(allstars))
-
     for band in sourcebands:
-        # setattr(
-        #        stars,
-        #        band+"_band",
-        #        4 * numpy.pi * stars.radius**2 *
-        #        __filter_band_flux__(
-        #            "bess-" + band + ".pass",
-        #            lambda x: B_lambda(x, stars.temperature),
-        #            ),
-        #        )
-        for star in stars:
-            setattr(
-                    star,
-                    band+"_band",
-                    4 * numpy.pi * star.radius**2 *
-                    filter_band_flux(
-                        "bess-" + band + ".pass",
-                        lambda x: B_lambda(x, star.temperature),
-                        ),
-                    )
+        setattr(
+                stars,
+                band+"_band",
+                4 * numpy.pi * stars.radius**2 *
+                filter_band_flux(
+                    "bess-" + band + ".pass",
+                    lambda x: B_lambda(x, stars.temperature),
+                    ),
+                )
 
     print "..raw images.."
 
