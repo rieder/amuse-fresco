@@ -94,6 +94,7 @@ def assign_weights_and_opacities(
 
     weight = numpy.zeros(len(mapper_gas))
     stars_ordered_by_lum = stars.sorted_by_attribute(band+"_band")
+    Nstar = min(Nstar, len(stars))
     for star in stars_ordered_by_lum[-Nstar:]:
         d2 = (
                 (gas.x-star.x)**2
