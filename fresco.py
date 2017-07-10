@@ -4,9 +4,11 @@ from __future__ import (
         division
         )
 
-from amuse.units import units, constants
+from amuse.units import units, constants, nbody_system
 from amuse.lab import Particles
 from amuse.io import read_set_from_file
+from amuse.community.fi.interface import FiMap
+
 from ubvinew import rgb_frame
 
 import numpy as np
@@ -54,11 +56,61 @@ def new_argument_parser():
 
 
 def calculate_effective_temperature(luminosity, radius):
-    return (
+    temp = (
             (
                 luminosity / (constants.four_pi_stefan_boltzmann*radius**2)
                 )**.25
             ).in_(units.K)
+    return temp
+
+
+def make_image(
+        mode,
+        converter,
+        gas,
+        stars,
+        image_width=10. | units.parsec,
+        image_size=[1024, 1024],
+        percentile=0.9995,
+        age=0. | units.Myr,
+        sourcebands="ubvri",
+        vmax=None,
+        calc_temperature=True,
+        ):
+    def mapper():
+        mapper = FiMap(converter, mode="openmp")
+
+        # mapper.parameters.minimum_distance = 1. | units.AU
+        mapper.parameters.image_size = image_size
+        # mapper.parameters.image_target = image_target
+
+        mapper.parameters.image_width = image_width
+        # mapper.parameters.projection_direction = (
+        #         (image_target-viewpoint)
+        #         / (image_target-viewpoint).length()
+        #         )
+        # mapper.parameters.projection_mode = projection
+        # mapper.parameters.image_angle = horizontal_angle
+        # mapper.parameters.viewpoint = viewpoint
+        mapper.parameters.extinction_flag =\
+            True if mode == "stars+gas" else False
+        return mapper
+
+    if mode == "gas":
+        image = column_density_map(mapper, gas)
+    else:
+        image = image_from_stars(
+                stars,
+                image_width=image_width,
+                image_size=image_size,
+                percentile=percentile,
+                calc_temperature=calc_temperature,
+                age=age,
+                sourcebands=sourcebands,
+                gas=gas,
+                mapper_factory=mapper
+                )
+    return image
 
 
 def column_density_map(mapper, part):
@@ -84,6 +136,7 @@ def image_from_stars(
         age=0. | units.Myr,
         sourcebands="ubvri",
         gas=None,
+        mapper_factory=None,
         ):
     if calc_temperature:
         # calculates the temperature of the stars from their total luminosity
@@ -119,6 +172,7 @@ def image_from_stars(
             image_size=image_size,
             percentile=percentile,
             sourcebands=sourcebands,
+            mapper_factory=mapper_factory,
             gas=gas,
             )
     return rgb['pixels']
@@ -199,7 +253,15 @@ if __name__ == "__main__":
     ax.spines['bottom'].set_visible(False)
     ax.spines['left'].set_visible(False)
 
-    image = image_from_stars(
+    converter = nbody_system.nbody_to_si(
+            stars.total_mass(),
+            image_width,
+            )
+
+    image = make_image(
+            "gas_and_stars",
+            converter,
+            gas,
             stars,
             image_width=image_width,
             image_size=image_size,
@@ -207,7 +269,6 @@ if __name__ == "__main__":
             calc_temperature=True,
             age=age,
             sourcebands=sourcebands,
-            gas=gas,
             )
 
     plt.imshow(

@@ -146,8 +146,8 @@ def rgb_frame(
     if mapper_factory:
         mapper = mapper_factory()
     else:
-        conv = nbody_system.nbody_to_si(stars.total_mass(), image_width)
-        mapper = FiMap(conv, mode="openmp", redirection="none")
+        converter = nbody_system.nbody_to_si(stars.total_mass(), image_width)
+        mapper = FiMap(converter, mode="openmp", redirection="none")
         mapper.parameters.image_width = image_width
         mapper.parameters.image_size = image_size
 
