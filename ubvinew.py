@@ -6,8 +6,8 @@ import os
 
 import numpy
 
-from numpy.fft import fft2, ifft2
-from numpy import log
+# from numpy.fft import fft2, ifft2
+# from numpy import log
 
 from amuse.units import units, nbody_system
 from amuse.community.fi.interface import FiMap
@@ -36,65 +36,9 @@ import astropy.io.fits as pyfits
 def Convolve(
         image,
         kernel,
-        MinPad=True,
-        pad=True,
         ):
     result = convolve_fft(image, kernel, boundary='fill')
-    # result = convolve(image,kernel)
     return result
-
-
-def _Convolve(
-        image1,
-        image2,
-        MinPad=True,
-        pad=True,
-        ):
-    """ Not so simple convolution """
-    # Just for comfort:
-    FFt = fft2
-    iFFt = ifft2
-
-    # The size of the images:
-    r1, c1 = image1.shape
-    r2, c2 = image2.shape
-
-    # MinPad results simpler padding,smaller images:
-    if MinPad:
-        r = r1+r2
-        c = c1+c2
-    else:
-        # if the Numerical Recipies says so:
-        r = 2 * max(r1, r2)
-        c = 2 * max(c1, c2)
-
-    # For nice FFT, we need the power of 2:
-    if pad:
-        pr2 = int(log(r)/log(2.0) + 1.0)
-        pc2 = int(log(c)/log(2.0) + 1.0)
-        rOrig = r
-        cOrig = c
-        r = 2**pr2
-        c = 2**pc2
-
-    # numpy fft has the padding built in, which can save us some steps here.
-    # The thing is the s(hape) parameter:
-    # fftimage = FFt(image1,s=(r,c)) * FFt(image2,s=(r,c))
-    fftimage = (
-            FFt(
-                image1.astype(dtype=numpy.float32),
-                shape=(r, c),
-                )
-            * FFt(
-                image2[::-1, ::-1].astype(dtype=numpy.float32),
-                shape=(r, c),
-                )
-            )
-
-    if pad:
-        return (iFFt(fftimage))[:rOrig, :cOrig].real
-    else:
-        return (iFFt(fftimage)).real
 
 
 psf = dict()
@@ -173,16 +117,14 @@ def rgb_frame(
         w3 = numpy.outer(a, 1.-b)
         w4 = numpy.outer(1.-a, 1.-b)
         for key, val in raw_images.items():
-            # xpad,ypad   = psf[key+'0'].shape
-            im1 = Convolve(val, psf[key+'0'])  # [xpad/2:-xpad/2,ypad/2:-ypad/2]
-            im2 = Convolve(val, psf[key+'1'])  # [xpad/2:-xpad/2,ypad/2:-ypad/2]
-            im3 = Convolve(val, psf[key+'2'])  # [xpad/2:-xpad/2,ypad/2:-ypad/2]
-            im4 = Convolve(val, psf[key+'3'])  # [xpad/2:-xpad/2,ypad/2:-ypad/2]
+            im1 = Convolve(val, psf[key+'0'])
+            im2 = Convolve(val, psf[key+'1'])
+            im3 = Convolve(val, psf[key+'2'])
+            im4 = Convolve(val, psf[key+'3'])
             convolved_images[key] = w1*im1+w2*im2+w3*im3+w4*im4
     else:
         for key, val in raw_images.items():
-            # xpad,ypad   = psf[key+'0'].shape
-            im1 = Convolve(val, psf[key+'0'])  # [xpad/2:-xpad/2,ypad/2:-ypad/2]
+            im1 = Convolve(val, psf[key+'0'])
             convolved_images[key] = im1
 
     print("..conversion to rgb")
