@@ -101,8 +101,8 @@ def assign_weights_and_opacities(
                 + (gas.z-star.z)**2
                 + 0.25 * gas.h_smooth**2
                 )
-        # flux=getattr(star,band+"_band")/(4*numpy.pi*d2)
-        flux = getattr(star, "v_band") / (4*numpy.pi*d2)
+        flux = getattr(star, band+"_band") / (4*numpy.pi*d2)
+        # flux = getattr(star, "v_band") / (4*numpy.pi*d2)
         weight += (
                 flux
                 * mapper_gas.opacity_area
@@ -164,7 +164,7 @@ def rgb_frame(
                 gas_in_mapper,
                 stars,
                 gas,
-                Nstar=30,
+                Nstar=50,
                 )
         # mapper.particles.weight = getattr(
         #         stars,
