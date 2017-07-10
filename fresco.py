@@ -3,9 +3,6 @@ from __future__ import (
         print_function,
         division
         )
-import sys
-
-# import numpy as np
 
 from amuse.units import units, constants
 from amuse.io import read_set_from_file
@@ -14,6 +11,32 @@ from ubvinew import rgb_frame
 # import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
+import argparse
+
+
+def new_argument_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+            '-i',
+            dest='filename',
+            default='test.hdf5',
+            help='file containing the stars',
+            )
+    parser.add_argument(
+            '-o',
+            dest='imagefilename',
+            default='test.png',
+            help='write image to this file',
+            )
+    parser.add_argument(
+            '-x',
+            dest='plot_axes',
+            action='store_true',
+            default=False,
+            help='plot axes',
+            )
+    return parser.parse_args()
 
 
 def calculate_effective_temperature(luminosity, radius):
@@ -71,8 +94,11 @@ def image_from_stars(
 
 
 if __name__ == "__main__":
-    filename = sys.argv[1]
-    plot_axes = False
+    args = new_argument_parser()
+    filename = args.filename
+    imagefilename = args.imagefilename
+
+    plot_axes = args.plot_axes
 
     length_unit = units.parsec
     dpi = 600
@@ -118,8 +144,6 @@ if __name__ == "__main__":
     # - Rotate so that xy = observed x/y axes of figure
     # - Scale positions to desired ra/dec (script Alison)
     # - calculate vmax based on nr of photons/exposure time
-
-    imagefilename = sys.argv[1]+".png"
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=figsize, dpi=dpi)
     fig.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
