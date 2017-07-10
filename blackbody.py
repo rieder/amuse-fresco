@@ -25,7 +25,23 @@ def __B_lambda__(l, temp):
 
 
 def B_lambda(l, t):
-    return 2*h*c**2/l**5*1./(e**(h*c/(l*kB*t))-1)
+    x = (
+            2 * h * c**2
+            / l**5
+            / (
+                e**(
+                    h * c
+                    / (
+                        (numpy.outer(
+                            t.value_in(units.K),
+                            l.value_in(units.m)
+                            ) | units.K * units.m)
+                        * kB
+                        )
+                    ) - 1
+                )
+            )
+    return x
 
 
 def energy(nu):
