@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import (
         print_function,
+        division
         )
 import sys
 
@@ -48,9 +49,7 @@ def image_from_stars(
             se = SSE()
             se.particles.add_particles(stars)
             if age > 0 | units.Myr:
-                print("Evolve start")
                 se.evolve_model(age)
-                print("Evolve done")
             stars.luminosity = se.particles.luminosity
             stars.radius = se.particles.radius
             stars.temperature = calculate_effective_temperature(
@@ -59,7 +58,6 @@ def image_from_stars(
                     )
             se.stop()
 
-    print("Start making RGB image")
     vmax, rgb = rgb_frame(
             stars,
             dryrun=False,
@@ -74,6 +72,7 @@ def image_from_stars(
 
 if __name__ == "__main__":
     filename = sys.argv[1]
+    plot_axes = False
 
     length_unit = units.parsec
     dpi = 600
@@ -89,6 +88,17 @@ if __name__ == "__main__":
     # was made.  Also, the image should reflect the distance to the "observed"
     # cluster.
     image_size = [2048, 2048]
+    if plot_axes:
+        left = 0.15
+        bottom = 0.15
+    else:
+        left = 0.
+        bottom = 0.
+    right = 1.0
+    top = 1.0
+    figwidth = image_size[0] / dpi / (right - left)
+    figheight = image_size[1] / dpi / (top - bottom)
+    figsize = (figwidth, figheight)
 
     age = 500. | units.Myr
     percentile = 0.9995  # for determining vmax
@@ -111,12 +121,17 @@ if __name__ == "__main__":
 
     imagefilename = sys.argv[1]+".png"
 
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=figsize, dpi=dpi)
+    fig.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
     ax.set_xlim([xmin, xmax])
     ax.set_ylim([ymin, ymax])
     ax.set_xlabel("[%s]" % (length_unit))
     ax.set_ylabel("[%s]" % (length_unit))
+    ax.set_aspect(1)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
 
     image = image_from_stars(
             stars,
