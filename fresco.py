@@ -21,20 +21,26 @@ def new_argument_parser():
             '-i',
             dest='filename',
             default='test.hdf5',
-            help='file containing the stars',
+            help='file containing the stars [test.hdf5]',
             )
     parser.add_argument(
             '-o',
             dest='imagefilename',
             default='test.png',
-            help='write image to this file',
+            help='write image to this file [test.png]',
+            )
+    parser.add_argument(
+            '-b',
+            dest='sourcebands',
+            default='ubvri',
+            help='colour bands to use [ubvri]',
             )
     parser.add_argument(
             '-x',
             dest='plot_axes',
             action='store_true',
             default=False,
-            help='plot axes',
+            help='plot axes [False]',
             )
     return parser.parse_args()
 
@@ -54,6 +60,7 @@ def image_from_stars(
         percentile=0.9995,
         calc_temperature=True,
         age=0. | units.Myr,
+        sourcebands="ubvri",
         ):
     if calc_temperature:
         # calculates the temperature of the stars from their total luminosity
@@ -88,7 +95,7 @@ def image_from_stars(
             multi_psf=False,  # True,
             image_size=image_size,
             percentile=percentile,
-            sourcebands="ubvri",
+            sourcebands=sourcebands,
             )
     return rgb['pixels']
 
@@ -99,6 +106,7 @@ if __name__ == "__main__":
     imagefilename = args.imagefilename
 
     plot_axes = args.plot_axes
+    sourcebands = args.sourcebands
 
     length_unit = units.parsec
     dpi = 600
@@ -164,6 +172,7 @@ if __name__ == "__main__":
             percentile=percentile,
             calc_temperature=True,
             age=age,
+            sourcebands=sourcebands,
             )
 
     plt.imshow(
