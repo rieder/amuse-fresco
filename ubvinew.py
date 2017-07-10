@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+from __future__ import (
+        print_function,
+        )
 import os
 
 import numpy
@@ -118,7 +122,7 @@ def rgb_frame(
         image_size=[1024, 1024],
         ):
 
-    print "luminosities.."
+    print("luminosities..")
 
     for band in sourcebands:
         setattr(
@@ -131,7 +135,7 @@ def rgb_frame(
                     ),
                 )
 
-    print "..raw images.."
+    print("..raw images..")
 
     conv = nbody_system.nbody_to_si(stars.total_mass(), image_width)
     mapper = FiMap(conv, mode="openmp", redirection="none")
@@ -145,7 +149,6 @@ def rgb_frame(
     # mapper.parameters.viewpoint_z   = 10|units.parsec
     mapper.parameters.projection_direction = [0, 0, 1]
     mapper.parameters.upvector = [0, -1, 0]
-    # print mapper.parameters
 
     raw_images = dict()
     for band in sourcebands:
@@ -160,7 +163,7 @@ def rgb_frame(
 
     convolved_images = dict()
 
-    print "..convolving.."
+    print("..convolving..")
 
     if multi_psf:
         a = numpy.arange(image_size[0])/float(image_size[0]-1)
@@ -182,7 +185,7 @@ def rgb_frame(
             im1 = Convolve(val, psf[key+'0'])  # [xpad/2:-xpad/2,ypad/2:-ypad/2]
             convolved_images[key] = im1
 
-    print "..conversion to rgb"
+    print("..conversion to rgb")
 
     source = [filter_data['bess-'+x+'.pass'] for x in sourcebands]
 
@@ -206,14 +209,13 @@ def rgb_frame(
         flat_sorted = numpy.sort(srgb_l.flatten())
         n = len(flat_sorted)
         vmax = flat_sorted[int(1.-3*(1.-percentile)*n)]
-        print "vmax:", vmax
+        print("vmax:", vmax)
     if dryrun:
         return vmax
 
     conv_lin_to_sRGB = sRGB_linear_to_sRGB()
 
     srgb = conv_lin_to_sRGB.convert(srgb_l/vmax)
-    # print srgb.shape()
 
     # r = srgb[0,:,:].transpose()
     # g = srgb[1,:,:].transpose()
@@ -224,7 +226,6 @@ def rgb_frame(
 
     rgb = numpy.zeros(image_size[0] * image_size[1] * 3)
     rgb = rgb.reshape(image_size[0], image_size[1], 3)
-    # print image_size[0], image_size[1], rgb.shape, r.shape, g.shape, b.shape
     rgb[:, :, 0] = r
     rgb[:, :, 1] = g
     rgb[:, :, 2] = b
