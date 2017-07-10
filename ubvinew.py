@@ -9,13 +9,17 @@ import numpy
 # from numpy.fft import fft2, ifft2
 # from numpy import log
 
-from amuse.units import units, nbody_system
+from amuse.lab import (
+        Particles,
+        units,
+        nbody_system,
+        )
 from amuse.community.fi.interface import FiMap
 
 # import logging
 # logging.basicConfig(level=logging.DEBUG)
 
-from filters3 import filter_band_flux, filter_data
+from filters3 import filter_band_flux, filter_data, filter_band_lambda
 from xyz import xyz_data
 from blackbody import B_lambda
 from color_converter import (
@@ -55,6 +59,59 @@ for band in "ubvri":
         psf[band+str(i)] = numpy.array(f[0].data)
 
 
+def assign_weights_and_opacities(
+        band,
+        mapper_stars,
+        mapper_gas,
+        stars,
+        gas,
+        dust_to_gas=0.01,
+        dust_extinction_cross_section_v_band=4.9e-22 | units.cm**2,
+        dust_albedo_v_band=.01,
+        Nstar=50,
+        ):
+
+    mapper_stars.weight = getattr(stars, band+"_band").value_in(units.LSun)
+
+    if len(gas) == 0:
+        return
+
+    lambda_eff = filter_band_lambda("bess-"+band+".pass")
+    lambda_v = filter_band_lambda("bess-v.pass")
+
+    f_H = 0.7
+    dust_cross_section = (
+            dust_extinction_cross_section_v_band
+            * (lambda_eff/lambda_v)**-1.5
+            )
+    dust_albedo = dust_albedo_v_band*(lambda_eff/lambda_v)**0.
+
+    mapper_gas.opacity_area = (
+            f_H
+            * gas.mass.value_in(units.amu)
+            * dust_cross_section
+            )
+
+    weight = numpy.zeros(len(mapper_gas))
+    stars_ordered_by_lum = stars.sorted_by_attribute(band+"_band")
+    for star in stars_ordered_by_lum[-Nstar:]:
+        d2 = (
+                (gas.x-star.x)**2
+                + (gas.y-star.y)**2
+                + (gas.z-star.z)**2
+                + 0.25 * gas.h_smooth**2
+                )
+        # flux=getattr(star,band+"_band")/(4*numpy.pi*d2)
+        flux = getattr(star, "v_band") / (4*numpy.pi*d2)
+        weight += (
+                flux
+                * mapper_gas.opacity_area
+                * dust_albedo
+                ).value_in(units.LSun)
+    mapper_gas.weight = weight
+    return
+
+
 def rgb_frame(
         stars,
         dryrun=False,
@@ -64,7 +121,11 @@ def rgb_frame(
         sourcebands="ubvri",
         image_width=12. | units.parsec,
         image_size=[1024, 1024],
+        mapper_factory=None,
+        gas=None,
         ):
+    if gas is None:
+        gas = Particles()
 
     print("luminosities..")
 
@@ -81,25 +142,34 @@ def rgb_frame(
 
     print("..raw images..")
 
-    conv = nbody_system.nbody_to_si(stars.total_mass(), image_width)
-    mapper = FiMap(conv, mode="openmp", redirection="none")
+    if mapper_factory:
+        mapper = mapper_factory()
+    else:
+        conv = nbody_system.nbody_to_si(stars.total_mass(), image_width)
+        mapper = FiMap(conv, mode="openmp", redirection="none")
+        mapper.parameters.image_width = image_width
+        mapper.parameters.image_size = image_size
 
-    mapper.parameters.image_width = image_width
-    mapper.parameters.image_size = image_size
+    stars_in_mapper = mapper.particles.add_particles(stars)
+    gas_in_mapper = mapper.particles.add_particles(gas)
 
-    mapper.particles.add_particles(stars)
-    # mapper.parameters.viewpoint_x   = 0|units.parsec
-    # mapper.parameters.viewpoint_y   = 0|units.parsec
-    # mapper.parameters.viewpoint_z   = 10|units.parsec
     mapper.parameters.projection_direction = [0, 0, 1]
     mapper.parameters.upvector = [0, -1, 0]
 
     raw_images = dict()
     for band in sourcebands:
-        mapper.particles.weight = getattr(
+        assign_weights_and_opacities(
+                band,
+                stars_in_mapper,
+                gas_in_mapper,
                 stars,
-                band+"_band"
-                ).value_in(units.LSun)
+                gas,
+                Nstar=30,
+                )
+        # mapper.particles.weight = getattr(
+        #         stars,
+        #         band+"_band"
+        #         ).value_in(units.LSun)
         im = mapper.image.pixel_value
         raw_images[band] = im
 

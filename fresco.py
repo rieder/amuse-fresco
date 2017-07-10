@@ -5,9 +5,11 @@ from __future__ import (
         )
 
 from amuse.units import units, constants
+from amuse.lab import Particles
 from amuse.io import read_set_from_file
 from ubvinew import rgb_frame
 
+import numpy as np
 # import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -18,10 +20,16 @@ import argparse
 def new_argument_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-            '-i',
-            dest='filename',
-            default='test.hdf5',
-            help='file containing the stars [test.hdf5]',
+            '-s',
+            dest='starsfilename',
+            default='stars.hdf5',
+            help='file containing the stars [stars.hdf5]',
+            )
+    parser.add_argument(
+            '-g',
+            dest='gasfilename',
+            default='',
+            help='file containing the gas (optional) []',
             )
     parser.add_argument(
             '-o',
@@ -53,6 +61,20 @@ def calculate_effective_temperature(luminosity, radius):
             ).in_(units.K)
 
 
+def column_density_map(mapper, part):
+    if callable(mapper):
+        mapper = mapper()
+
+    p = mapper.particles.add_particles(part)
+    p.weight = part.mass.value_in(units.amu)
+    projected = mapper.image.pixel_value
+    # print part.weight.sum()
+    # print projected.min(),projected.max(),projected.mean(),projected.sum()
+    mapper.stop()
+    im = np.transpose(projected)
+    return im
+
+
 def image_from_stars(
         stars,
         image_width=10. | units.parsec,
@@ -61,6 +83,7 @@ def image_from_stars(
         calc_temperature=True,
         age=0. | units.Myr,
         sourcebands="ubvri",
+        gas=None,
         ):
     if calc_temperature:
         # calculates the temperature of the stars from their total luminosity
@@ -96,13 +119,15 @@ def image_from_stars(
             image_size=image_size,
             percentile=percentile,
             sourcebands=sourcebands,
+            gas=gas,
             )
     return rgb['pixels']
 
 
 if __name__ == "__main__":
     args = new_argument_parser()
-    filename = args.filename
+    starsfilename = args.starsfilename
+    gasfilename = args.gasfilename
     imagefilename = args.imagefilename
 
     plot_axes = args.plot_axes
@@ -143,10 +168,19 @@ if __name__ == "__main__":
     ymax = 0.5 * image_width.value_in(length_unit)
 
     stars = read_set_from_file(
-            filename,
+            starsfilename,
             "amuse",
             close_file=True,
             )
+    if gasfilename:
+        gas = read_set_from_file(
+                gasfilename,
+                "amuse",
+                close_file=True,
+                )
+    else:
+        gas = Particles()
+    gas.h_smooth = 0.02 | units.parsec
 
     # FIXME: add these features
     # - Rotate so that xy = observed x/y axes of figure
@@ -173,6 +207,7 @@ if __name__ == "__main__":
             calc_temperature=True,
             age=age,
             sourcebands=sourcebands,
+            gas=gas,
             )
 
     plt.imshow(

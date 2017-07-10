@@ -2,7 +2,7 @@ import os
 
 import numpy
 
-from amuse.units import units
+from amuse.units import units, quantities
 
 from matplotlib import pyplot
 
@@ -68,9 +68,17 @@ def filter_band_flux(
                 right=0.,
                 )
     src = throughput * source(wavelength)
+    src = quantities.to_quantity(src)
     return numpy.trapz(
             src.number,
             x=wavelength.number) | (src.unit*wavelength.unit)
+
+
+def filter_band_lambda(fdata):
+    return (
+            filter_band_flux(fdata, lambda x: x)
+            / filter_band_flux(fdata, lambda x: 1.)
+            ).in_(units.angstrom)
 
 
 def plot_filters():
