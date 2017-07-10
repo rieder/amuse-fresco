@@ -1,15 +1,15 @@
 import numpy
 
-from amuse.units import units, constants
+from amuse.units import units
 from amuse.units.quantities import VectorQuantity
 from numpy import (
         pi, e,
         )
-from amuse.constants import (
+from amuse.units.constants import (
         kB, h, c,
         )
-from amuse.constants import Rydberg_constant as Ry
-from amuse.constants import Stefan_hyphen_Boltzmann_constant as sigma
+from amuse.units.constants import Rydberg_constant as Ry
+from amuse.units.constants import Stefan_hyphen_Boltzmann_constant as sigma
 
 
 def B_nu(nu, t):
@@ -29,11 +29,11 @@ def B_lambda(l, t):
 
 
 def energy(nu):
-    return constants.h*nu
+    return h*nu
 
 
 def freq(e):
-    return e/constants.h
+    return e/h
 
 
 def freq_from_wavenumber(k):
