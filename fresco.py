@@ -46,6 +46,20 @@ def new_argument_parser():
             help='colour bands to use [ubvri]',
             )
     parser.add_argument(
+            '-a',
+            dest='age',
+            default=100.,
+            type=float,
+            help='age of the stars in Myr [100]',
+            )
+    parser.add_argument(
+            '-w',
+            dest='width',
+            default=5.,
+            type=float,
+            help='image width in parsec [5]',
+            )
+    parser.add_argument(
             '-x',
             dest='plot_axes',
             action='store_true',
@@ -186,14 +200,14 @@ if __name__ == "__main__":
 
     plot_axes = args.plot_axes
     sourcebands = args.sourcebands
+    age = args.age | units.Myr
+    # FIXME this should depend on the distance!
+    # size = fixed at nr of arcmin
+    image_width = args.width | units.parsec
 
     length_unit = units.parsec
     dpi = 600
     image_width_arcsec = 160
-
-    # FIXME this should depend on the distance!
-    # size = fixed at nr of arcmin
-    image_width = 10. | units.parsec
 
     # FIXME the psf is fixed pixel size, so the pixels in the image here
     # reflects how much pixels will be spread!  In principle, this should be a
@@ -213,7 +227,6 @@ if __name__ == "__main__":
     figheight = image_size[1] / dpi / (top - bottom)
     figsize = (figwidth, figheight)
 
-    age = 500. | units.Myr
     percentile = 0.9995  # for determining vmax
 
     xmin = -0.5 * image_width.value_in(length_unit)
@@ -226,15 +239,18 @@ if __name__ == "__main__":
             "amuse",
             close_file=True,
             )
+    com = stars.center_of_mass()
+    stars.position -= com
     if gasfilename:
         gas = read_set_from_file(
                 gasfilename,
                 "amuse",
                 close_file=True,
                 )
+        gas.position -= com
     else:
         gas = Particles()
-    gas.h_smooth = 0.02 | units.parsec
+    gas.h_smooth = 0.05 | units.parsec
 
     # FIXME: add these features
     # - Rotate so that xy = observed x/y axes of figure
