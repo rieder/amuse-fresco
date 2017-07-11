@@ -10,6 +10,7 @@ from amuse.io import read_set_from_file
 from amuse.community.fi.interface import FiMap
 
 from ubvinew import rgb_frame
+from fieldstars import new_field_stars
 
 import numpy as np
 # import matplotlib
@@ -66,7 +67,25 @@ def new_argument_parser():
             default=False,
             help='plot axes [False]',
             )
+    parser.add_argument(
+            '--seed',
+            dest='seed',
+            default=1701,
+            type=int,
+            help='random seed',
+            )
     return parser.parse_args()
+
+
+def evolve_to_age(stars, age, se="SSE"):
+    if se == "SSE":
+        se = SSE()
+        se.particles.add_particles(stars)
+        se.evolve_model(age)
+        stars.luminosity = se.particles.luminosity
+        stars.radius = se.particles.radius
+        se.stop()
+    return
 
 
 def calculate_effective_temperature(luminosity, radius):
@@ -161,27 +180,16 @@ def image_from_stars(
                     stars.radius,
                     )
         except:
-            print(
-                    "Calculating luminosity/temperature for %s old stars..."
-                    % (age)
-                    )
-            from amuse.community.sse.interface import SSE
-            se = SSE()
-            se.particles.add_particles(stars)
-            if age > 0 | units.Myr:
-                se.evolve_model(age)
-            stars.luminosity = se.particles.luminosity
-            stars.radius = se.particles.radius
             stars.temperature = calculate_effective_temperature(
                     stars.luminosity,
                     stars.radius,
                     )
-            se.stop()
 
     vmax, rgb = rgb_frame(
             stars,
             dryrun=False,
             image_width=image_width,
+            vmax=None,
             multi_psf=False,  # True,
             image_size=image_size,
             percentile=percentile,
@@ -197,6 +205,8 @@ if __name__ == "__main__":
     starsfilename = args.starsfilename
     gasfilename = args.gasfilename
     imagefilename = args.imagefilename
+    stellar_evolution = True
+    np.random.seed(args.seed)
 
     plot_axes = args.plot_axes
     sourcebands = args.sourcebands
@@ -239,8 +249,31 @@ if __name__ == "__main__":
             "amuse",
             close_file=True,
             )
+    if stellar_evolution:
+        print(
+                "Calculating luminosity/temperature for %s old stars..."
+                % (age)
+                )
+        from amuse.community.sse.interface import SSE
+        se = SSE()
+        se.particles.add_particles(stars)
+        if age > 0 | units.Myr:
+            se.evolve_model(age)
+        stars.luminosity = se.particles.luminosity
+        stars.radius = se.particles.radius
+        se.stop()
     com = stars.center_of_mass()
     stars.position -= com
+
+    for age in np.array([400, 600, 800, 1600, 3200, 6400]) | units.Myr:
+        fieldstars = new_field_stars(
+                int(len(stars)/3),
+                width=image_width,
+                height=image_width,
+                )
+        evolve_to_age(fieldstars, age)
+        stars.add_particles(fieldstars)
+
     if gasfilename:
         gas = read_set_from_file(
                 gasfilename,
