@@ -165,7 +165,7 @@ def rgb_frame(
                 gas_in_mapper,
                 stars,
                 gas,
-                Nstar=50,
+                Nstar=200,
                 )
         # mapper.particles.weight = getattr(
         #         stars,
