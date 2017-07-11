@@ -275,7 +275,7 @@ if __name__ == "__main__":
             )
 
     image = make_image(
-            "gas_and_stars",
+            "stars+gas",
             converter,
             gas,
             stars,
