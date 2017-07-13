@@ -74,6 +74,13 @@ def new_argument_parser():
             type=int,
             help='random seed',
             )
+    parser.add_argument(
+            '--vmax',
+            dest='vmax',
+            default=0,
+            type=float,
+            help='vmax value',
+            )
     return parser.parse_args()
 
 
@@ -206,6 +213,7 @@ if __name__ == "__main__":
     gasfilename = args.gasfilename
     imagefilename = args.imagefilename
     stellar_evolution = True
+    vmax = args.vmax if args.vmax > 0 else None
     np.random.seed(args.seed)
 
     plot_axes = args.plot_axes
@@ -272,6 +280,7 @@ if __name__ == "__main__":
                 height=image_width,
                 )
         evolve_to_age(fieldstars, age)
+        # TODO: add distance modulus
         stars.add_particles(fieldstars)
 
     if gasfilename:
@@ -317,6 +326,7 @@ if __name__ == "__main__":
             percentile=percentile,
             calc_temperature=True,
             age=age,
+            vmax=vmax,
             sourcebands=sourcebands,
             )
 
