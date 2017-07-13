@@ -81,6 +81,13 @@ def new_argument_parser():
             type=float,
             help='vmax value',
             )
+    parser.add_argument(
+            '--field',
+            dest='fieldstars',
+            action='store_true',
+            default=False,
+            help='add field stars [False]',
+            )
     return parser.parse_args()
 
 
@@ -148,6 +155,7 @@ def make_image(
                 age=age,
                 sourcebands=sourcebands,
                 gas=gas,
+                vmax=vmax,
                 mapper_factory=mapper
                 )
     return image
@@ -176,6 +184,7 @@ def image_from_stars(
         age=0. | units.Myr,
         sourcebands="ubvri",
         gas=None,
+        vmax=None,
         mapper_factory=None,
         ):
     if calc_temperature:
@@ -196,7 +205,7 @@ def image_from_stars(
             stars,
             dryrun=False,
             image_width=image_width,
-            vmax=None,
+            vmax=vmax,
             multi_psf=False,  # True,
             image_size=image_size,
             percentile=percentile,
@@ -214,6 +223,7 @@ if __name__ == "__main__":
     imagefilename = args.imagefilename
     stellar_evolution = True
     vmax = args.vmax if args.vmax > 0 else None
+    fieldstars = args.fieldstars
     np.random.seed(args.seed)
 
     plot_axes = args.plot_axes
@@ -273,15 +283,16 @@ if __name__ == "__main__":
     com = stars.center_of_mass()
     stars.position -= com
 
-    for age in np.array([400, 600, 800, 1600, 3200, 6400]) | units.Myr:
-        fieldstars = new_field_stars(
-                int(len(stars)/3),
-                width=image_width,
-                height=image_width,
-                )
-        evolve_to_age(fieldstars, age)
-        # TODO: add distance modulus
-        stars.add_particles(fieldstars)
+    if fieldstars:
+        for age in np.array([400, 600, 800, 1600, 3200, 6400]) | units.Myr:
+            fieldstars = new_field_stars(
+                    int(len(stars)/3),
+                    width=image_width,
+                    height=image_width,
+                    )
+            evolve_to_age(fieldstars, age)
+            # TODO: add distance modulus
+            stars.add_particles(fieldstars)
 
     if gasfilename:
         gas = read_set_from_file(
