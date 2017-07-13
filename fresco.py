@@ -23,6 +23,12 @@ import argparse
 def new_argument_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument(
+            '--filetype',
+            dest='filetype',
+            default='amuse',
+            help='filetype [amuse], valid are amuse,starlab,txt,...',
+            )
+    parser.add_argument(
             '-s',
             dest='starsfilename',
             default='stars.hdf5',
@@ -224,6 +230,7 @@ if __name__ == "__main__":
     stellar_evolution = True
     vmax = args.vmax if args.vmax > 0 else None
     fieldstars = args.fieldstars
+    filetype = args.filetype
     np.random.seed(args.seed)
 
     plot_axes = args.plot_axes
@@ -264,7 +271,7 @@ if __name__ == "__main__":
 
     stars = read_set_from_file(
             starsfilename,
-            "amuse",
+            filetype,
             close_file=True,
             )
     if stellar_evolution:
@@ -297,7 +304,7 @@ if __name__ == "__main__":
     if gasfilename:
         gas = read_set_from_file(
                 gasfilename,
-                "amuse",
+                filetype,
                 close_file=True,
                 )
         gas.position -= com
