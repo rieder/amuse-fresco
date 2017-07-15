@@ -18,7 +18,7 @@ obscured by the gas/dust particles.
 
 ## Requirements
 
-- Python 2.7 (3.x expiremental)
+- Python 2.7 (3.x experimental)
 - Numpy
 - Matplotlib
 - AMUSE (https://github.com/amusecode/amuse)
