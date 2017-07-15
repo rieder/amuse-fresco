@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import (
         print_function,
+        division,
         )
 import os
 
@@ -19,10 +20,12 @@ from amuse.community.fi.interface import FiMap
 # import logging
 # logging.basicConfig(level=logging.DEBUG)
 
-from filters3 import filter_band_flux, filter_data, filter_band_lambda
-from xyz import xyz_data
-from blackbody import B_lambda
-from color_converter import (
+from fresco.filters3 import (
+        filter_band_flux, filter_data, filter_band_lambda,
+        )
+from fresco.xyz import xyz_data
+from fresco.blackbody import B_lambda
+from fresco.color_converter import (
         ColorConverter,
         XYZ_to_sRGB_linear, sRGB_linear_to_sRGB
         )

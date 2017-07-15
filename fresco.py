@@ -9,8 +9,8 @@ from amuse.lab import Particles
 from amuse.io import read_set_from_file
 from amuse.community.fi.interface import FiMap
 
-from ubvinew import rgb_frame
-from fieldstars import new_field_stars
+from fresco.ubvinew import rgb_frame
+from fresco.fieldstars import new_field_stars
 
 import numpy as np
 # import matplotlib
