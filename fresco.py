@@ -31,14 +31,14 @@ def new_argument_parser():
     parser.add_argument(
             '-s',
             dest='starsfilename',
-            default='stars.hdf5',
-            help='file containing the stars [stars.hdf5]',
+            default='',
+            help='file containing stars (optional) []',
             )
     parser.add_argument(
             '-g',
             dest='gasfilename',
             default='',
-            help='file containing the gas (optional) []',
+            help='file containing gas (optional) []',
             )
     parser.add_argument(
             '-o',
@@ -89,31 +89,49 @@ def new_argument_parser():
             )
     parser.add_argument(
             '--field',
-            dest='fieldstars',
-            action='store_true',
-            default=False,
-            help='add field stars [False]',
+            dest='n_fieldstars',
+            default=0,
+            type=int,
+            help='add N field stars (optional) [0]',
             )
     return parser.parse_args()
 
 
-def evolve_to_age(stars, age, se="SSE"):
-    if se == "SSE":
+def evolve_to_age(stars, age, se="SeBa"):
+    if se == "SeBa":
+        from amuse.community.seba.interface import SeBa
+        se = SeBa()
+    elif se == "SSE":
+        from amuse.community.sse.interface import SSE
         se = SSE()
-        se.particles.add_particles(stars)
+        # SSE can result in nan values for luminosity/radius
+    se.particles.add_particles(stars)
+    if age > 0 | units.yr:
         se.evolve_model(age)
-        stars.luminosity = se.particles.luminosity
-        stars.radius = se.particles.radius
-        se.stop()
+    stars.luminosity = np.nan_to_num(
+            se.particles.luminosity.value_in(units.LSun)
+            ) | units.LSun
+    # Temp fix: add one meter to radius of stars, to prevent zero/nan radius.
+    # TODO: Should fix this a better way, but it's ok for now.
+    stars.radius = (1 | units.m) + (np.nan_to_num(
+            se.particles.radius.value_in(units.RSun)
+            ) | units.RSun)
+    se.stop()
     return
 
 
 def calculate_effective_temperature(luminosity, radius):
-    temp = (
+    temp = np.nan_to_num(
             (
-                luminosity / (constants.four_pi_stefan_boltzmann*radius**2)
-                )**.25
-            ).in_(units.K)
+                (
+                    luminosity
+                    / (
+                        constants.four_pi_stefan_boltzmann
+                        * radius**2
+                        )
+                    )**.25
+                ).value_in(units.K)
+            ) | units.K
     return temp
 
 
@@ -196,16 +214,10 @@ def image_from_stars(
     if calc_temperature:
         # calculates the temperature of the stars from their total luminosity
         # and radius, calculates those first if needed
-        try:
-            stars.temperature = calculate_effective_temperature(
-                    stars.luminosity,
-                    stars.radius,
-                    )
-        except:
-            stars.temperature = calculate_effective_temperature(
-                    stars.luminosity,
-                    stars.radius,
-                    )
+        stars.temperature = calculate_effective_temperature(
+                stars.luminosity,
+                stars.radius,
+                )
 
     vmax, rgb = rgb_frame(
             stars,
@@ -229,9 +241,10 @@ if __name__ == "__main__":
     imagefilename = args.imagefilename
     stellar_evolution = True
     vmax = args.vmax if args.vmax > 0 else None
-    fieldstars = args.fieldstars
+    n_fieldstars = args.n_fieldstars
     filetype = args.filetype
     np.random.seed(args.seed)
+    se_code = "SSE"
 
     plot_axes = args.plot_axes
     sourcebands = args.sourcebands
@@ -269,37 +282,42 @@ if __name__ == "__main__":
     ymin = -0.5 * image_width.value_in(length_unit)
     ymax = 0.5 * image_width.value_in(length_unit)
 
-    stars = read_set_from_file(
-            starsfilename,
-            filetype,
-            close_file=True,
-            )
-    if stellar_evolution:
-        print(
-                "Calculating luminosity/temperature for %s old stars..."
-                % (age)
+    if starsfilename:
+        stars = read_set_from_file(
+                starsfilename,
+                filetype,
+                close_file=True,
                 )
-        from amuse.community.sse.interface import SSE
-        se = SSE()
-        se.particles.add_particles(stars)
-        if age > 0 | units.Myr:
-            se.evolve_model(age)
-        stars.luminosity = se.particles.luminosity
-        stars.radius = se.particles.radius
-        se.stop()
-    com = stars.center_of_mass()
-    stars.position -= com
-
-    if fieldstars:
-        for age in np.array([400, 600, 800, 1600, 3200, 6400]) | units.Myr:
-            fieldstars = new_field_stars(
-                    int(len(stars)/3),
-                    width=image_width,
-                    height=image_width,
+        if stellar_evolution:
+            print(
+                    "Calculating luminosity/temperature for %s old stars..."
+                    % (age)
                     )
-            evolve_to_age(fieldstars, age)
-            # TODO: add distance modulus
-            stars.add_particles(fieldstars)
+            evolve_to_age(stars, age, se=se_code)
+        com = stars.center_of_mass()
+        stars.position -= com
+    else:
+        stars = Particles()
+        com = np.array([0, 0, 0]) | units.parsec
+
+    if n_fieldstars:
+        minage = 400 | units.Myr
+        maxage = 12 | units.Gyr
+        fieldstars = new_field_stars(
+                n_fieldstars,
+                width=image_width,
+                height=image_width,
+                )
+        fieldstars.age = (
+                minage
+                + (
+                    np.random.sample(n_fieldstars)
+                    * (maxage - minage)
+                    )
+                )
+        evolve_to_age(fieldstars, 0 | units.yr, se=se_code)
+        # TODO: add distance modulus
+        stars.add_particles(fieldstars)
 
     if gasfilename:
         gas = read_set_from_file(
