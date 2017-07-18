@@ -1,11 +1,11 @@
 # FRESCO
-Fabricate Reality-Emulating Star Cluster Observations
+Fresco aims to simulate observations of particle-based simulations, such as
+those of a star cluster. It creates a Hubble WFC3-like image from an AMUSE-type
+hdf5 file of stars or gas particles (other filetypes, like the Starlab format,
+are also supported). 
 
-Fresco creates a Hubble WFC3-like image from an AMUSE-type hdf5 file of stars
-(other filetypes, like the Starlab format, are also supported). The positions
-and masses of the stars are always used, if information on the temperature and
-radius is not available this is calculated using the SSE stellar evolution
-code.
+For stars, the temperature and radius are calculated using the SeBa (default)
+or SSE stellar evolution code, if it is not available in the dataset.
 
 Gas/dust particles may also be read, and will cause extinction and reflection
 of light from background- and nearby stars, respectively.
