@@ -298,7 +298,6 @@ if __name__ == "__main__":
         stars.position -= com
     else:
         stars = Particles()
-        com = np.array([0, 0, 0]) | units.parsec
 
     if n_fieldstars:
         minage = 400 | units.Myr
