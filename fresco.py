@@ -288,7 +288,7 @@ if __name__ == "__main__":
                 filetype,
                 close_file=True,
                 )
-        if stellar_evolution:
+        if stellar_evolution and (age < 0 | units.Myr):
             print(
                     "Calculating luminosity/temperature for %s old stars..."
                     % (age)
