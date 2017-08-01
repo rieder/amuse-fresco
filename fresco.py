@@ -324,6 +324,8 @@ if __name__ == "__main__":
                 filetype,
                 close_file=True,
                 )
+        if not com:
+            com = gas.center_of_mass()
         gas.position -= com
     else:
         gas = Particles()
