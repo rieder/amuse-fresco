@@ -20,7 +20,7 @@ from amuse.lab import (
 # logging.basicConfig(level=logging.DEBUG)
 
 from fresco.filters3 import (
-        filter_band_flux, filter_data, filter_band_lambda,
+        filter_band_flux, get_filter_data, filter_band_lambda,
         )
 from fresco.xyz import xyz_data
 from fresco.blackbody import B_lambda
@@ -202,7 +202,7 @@ def rgb_frame(
             convolved_images[key] = im1
 
     print("..conversion to rgb")
-
+    filter_data = get_filter_data()
     source = [filter_data['bess-'+x+'.pass'] for x in sourcebands]
 
     target = [xyz_data['x'], xyz_data['y'], xyz_data['z']]
