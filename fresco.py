@@ -5,7 +5,7 @@ from __future__ import (
         )
 
 from amuse.units import units, constants, nbody_system
-from amuse.lab import Particles
+from amuse.datamodel import Particles
 from amuse.io import read_set_from_file
 
 from fresco.ubvinew import rgb_frame

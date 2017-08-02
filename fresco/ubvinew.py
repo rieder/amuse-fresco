@@ -10,8 +10,10 @@ import numpy
 # from numpy.fft import fft2, ifft2
 # from numpy import log
 
-from amuse.lab import (
+from amuse.datamodel import (
         Particles,
+        )
+from amuse.units import (
         units,
         nbody_system,
         )
