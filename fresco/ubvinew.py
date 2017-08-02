@@ -15,7 +15,6 @@ from amuse.lab import (
         units,
         nbody_system,
         )
-from amuse.community.fi.interface import FiMap
 
 # import logging
 # logging.basicConfig(level=logging.DEBUG)
@@ -149,6 +148,7 @@ def rgb_frame(
     if mapper_factory:
         mapper = mapper_factory()
     else:
+        from amuse.community.fi.interface import FiMap
         converter = nbody_system.nbody_to_si(stars.total_mass(), image_width)
         mapper = FiMap(converter, mode="openmp", redirection="none")
         mapper.parameters.image_width = image_width
