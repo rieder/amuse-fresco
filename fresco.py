@@ -7,7 +7,6 @@ from __future__ import (
 from amuse.units import units, constants, nbody_system
 from amuse.lab import Particles
 from amuse.io import read_set_from_file
-from amuse.community.fi.interface import FiMap
 
 from fresco.ubvinew import rgb_frame
 from fresco.fieldstars import new_field_stars
@@ -147,24 +146,27 @@ def make_image(
         sourcebands="ubvri",
         vmax=None,
         calc_temperature=True,
+        mapper_code="FiMap"
         ):
     def mapper():
-        mapper = FiMap(converter, mode="openmp")
+        if mapper_code == "FiMap":
+            from amuse.community.fi.interface import FiMap
+            mapper = FiMap(converter, mode="openmp")
 
-        # mapper.parameters.minimum_distance = 1. | units.AU
-        mapper.parameters.image_size = image_size
-        # mapper.parameters.image_target = image_target
+            # mapper.parameters.minimum_distance = 1. | units.AU
+            mapper.parameters.image_size = image_size
+            # mapper.parameters.image_target = image_target
 
-        mapper.parameters.image_width = image_width
-        # mapper.parameters.projection_direction = (
-        #         (image_target-viewpoint)
-        #         / (image_target-viewpoint).length()
-        #         )
-        # mapper.parameters.projection_mode = projection
-        # mapper.parameters.image_angle = horizontal_angle
-        # mapper.parameters.viewpoint = viewpoint
-        mapper.parameters.extinction_flag =\
-            True if mode == "stars+gas" else False
+            mapper.parameters.image_width = image_width
+            # mapper.parameters.projection_direction = (
+            #         (image_target-viewpoint)
+            #         / (image_target-viewpoint).length()
+            #         )
+            # mapper.parameters.projection_mode = projection
+            # mapper.parameters.image_angle = horizontal_angle
+            # mapper.parameters.viewpoint = viewpoint
+            mapper.parameters.extinction_flag =\
+                True if mode == "stars+gas" else False
         return mapper
 
     if mode == "gas":
