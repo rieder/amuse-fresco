@@ -15,7 +15,7 @@ from amuse.datamodel import (
         )
 from amuse.units import (
         units,
-        nbody_system,
+        # nbody_system,
         )
 
 # import logging
@@ -128,6 +128,7 @@ def rgb_frame(
         image_size=[1024, 1024],
         mapper_factory=None,
         gas=None,
+        mapper_code=None,
         ):
     if gas is None:
         gas = Particles()
@@ -147,39 +148,60 @@ def rgb_frame(
 
     print("..raw images..")
 
-    if mapper_factory:
+    if mapper_code != "gridify":
+        # Use mapper to make raw (pre-convolved) images
         mapper = mapper_factory()
+        stars_in_mapper = mapper.particles.add_particles(stars)
+        gas_in_mapper = mapper.particles.add_particles(gas)
+
+        mapper.parameters.projection_direction = [0, 0, 1]
+        mapper.parameters.upvector = [0, -1, 0]
+
+        raw_images = dict()
+        for band in sourcebands:
+            assign_weights_and_opacities(
+                    band,
+                    stars_in_mapper,
+                    gas_in_mapper,
+                    stars,
+                    gas,
+                    Nstar=200,
+                    )
+            # mapper.particles.weight = getattr(
+            #         stars,
+            #         band+"_band"
+            #         ).value_in(units.LSun)
+            im = mapper.image.pixel_value
+            raw_images[band] = im
+
+        mapper.stop()
     else:
-        from amuse.community.fi.interface import FiMap
-        converter = nbody_system.nbody_to_si(stars.total_mass(), image_width)
-        mapper = FiMap(converter, mode="openmp", redirection="none")
-        mapper.parameters.image_width = image_width
-        mapper.parameters.image_size = image_size
+        # Use simpler python mapping script
+        from gridify import map_to_grid
+        stars_in_mapper = stars.copy()
+        gas_in_mapper = gas.copy()
+        raw_images = dict()
 
-    stars_in_mapper = mapper.particles.add_particles(stars)
-    gas_in_mapper = mapper.particles.add_particles(gas)
-
-    mapper.parameters.projection_direction = [0, 0, 1]
-    mapper.parameters.upvector = [0, -1, 0]
-
-    raw_images = dict()
-    for band in sourcebands:
-        assign_weights_and_opacities(
-                band,
-                stars_in_mapper,
-                gas_in_mapper,
-                stars,
-                gas,
-                Nstar=200,
-                )
-        # mapper.particles.weight = getattr(
-        #         stars,
-        #         band+"_band"
-        #         ).value_in(units.LSun)
-        im = mapper.image.pixel_value
-        raw_images[band] = im
-
-    mapper.stop()
+        for band in sourcebands:
+            assign_weights_and_opacities(
+                    band,
+                    stars_in_mapper,
+                    gas_in_mapper,
+                    stars,
+                    gas,
+                    Nstar=200,
+                    )
+            allparticles = Particles()
+            allparticles.add_particles(stars_in_mapper)
+            allparticles.add_particles(gas_in_mapper)
+            im = map_to_grid(
+                    allparticles.x,
+                    -allparticles.y,
+                    weights=allparticles.weight,
+                    image_size=image_size,
+                    image_width=image_width,
+                    )
+            raw_images[band] = im
 
     convolved_images = dict()
 

@@ -73,6 +73,13 @@ def new_argument_parser():
             help='plot axes [False]',
             )
     parser.add_argument(
+            '--ext',
+            dest='calculate_extinction',
+            action='store_true',
+            default=False,
+            help='include extinction by dust [False]',
+            )
+    parser.add_argument(
             '--seed',
             dest='seed',
             default=1701,
@@ -146,10 +153,16 @@ def make_image(
         sourcebands="ubvri",
         vmax=None,
         calc_temperature=True,
-        mapper_code="FiMap"
+        mapper_code=None  # "FiMap"
         ):
-    def mapper():
-        if mapper_code == "FiMap":
+    """
+    Makes image from gas and stars
+    """
+    if mode == "extinction":
+        mapper_code = "FiMap"
+
+    if mapper_code == "FiMap":
+        def mapper():
             from amuse.community.fi.interface import FiMap
             mapper = FiMap(converter, mode="openmp")
 
@@ -166,8 +179,11 @@ def make_image(
             # mapper.parameters.image_angle = horizontal_angle
             # mapper.parameters.viewpoint = viewpoint
             mapper.parameters.extinction_flag =\
-                True if mode == "stars+gas" else False
-        return mapper
+                True if mode == "extinction" else False
+            return mapper
+    else:
+        mapper = None
+        mapper_code = "gridify"
 
     if mode == "gas":
         image = column_density_map(mapper, gas)
@@ -182,7 +198,8 @@ def make_image(
                 sourcebands=sourcebands,
                 gas=gas,
                 vmax=vmax,
-                mapper_factory=mapper
+                mapper_factory=mapper,
+                mapper_code=mapper_code,
                 )
     return image
 
@@ -212,6 +229,7 @@ def image_from_stars(
         gas=None,
         vmax=None,
         mapper_factory=None,
+        mapper_code=None,
         ):
     if calc_temperature:
         # calculates the temperature of the stars from their total luminosity
@@ -232,6 +250,7 @@ def image_from_stars(
             sourcebands=sourcebands,
             mapper_factory=mapper_factory,
             gas=gas,
+            mapper_code=mapper_code,
             )
     return rgb['pixels']
 
@@ -247,6 +266,10 @@ if __name__ == "__main__":
     filetype = args.filetype
     np.random.seed(args.seed)
     se_code = "SSE"
+    if args.calculate_extinction:
+        mode = "extinction"
+    else:
+        mode = "stars_and_gas"
 
     plot_axes = args.plot_axes
     sourcebands = args.sourcebands
@@ -356,7 +379,7 @@ if __name__ == "__main__":
             )
 
     image = make_image(
-            "stars+gas",
+            mode,
             converter,
             gas,
             stars,
