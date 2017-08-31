@@ -6,6 +6,7 @@ from __future__ import (
 import os
 
 import numpy
+from scipy.ndimage import zoom
 
 # from numpy.fft import fft2, ifft2
 # from numpy import log
@@ -49,18 +50,29 @@ def Convolve(
     return result
 
 
-psf = dict()
+def get_psf(
+        instrument="WFPC_II_WFC3",
+        zoom_factor=1.0,
+        ):
+    psf = dict()
+    this_dir = os.path.split(__file__)[0]
+    if this_dir == "":
+        this_dir = "."
+    # FIXME use some relative dir
+    datadir = this_dir + "/data/" + instrument + "/"
 
-for band in "ubvri":
-    for i in range(4):
-        instrument = "WFPC_II_WFC3"
-        this_dir = os.path.split(__file__)[0]
-        if this_dir == "":
-            this_dir = "."
-        datadir = this_dir + "/data/" + instrument + "/"
-        # FIXME use some relative dir
-        f = pyfits.open(datadir+band+"%2.2i.fits" % i)
-        psf[band+str(i)] = numpy.array(f[0].data)
+    for band in "ubvri":
+        for i in range(4):
+            f = pyfits.open(datadir+band+"%2.2i.fits" % i)
+            if zoom_factor != 1.0:
+                psf[band+str(i)] = zoom(
+                        numpy.array(f[0].data),
+                        zoom_factor, order=3, mode='constant', cval=0.0,
+                        prefilter=True,
+                        )
+            else:
+                psf[band+str(i)] = numpy.array(f[0].data)
+    return psf
 
 
 def assign_weights_and_opacities(
@@ -129,7 +141,10 @@ def rgb_frame(
         mapper_factory=None,
         gas=None,
         mapper_code=None,
+        zoom_factor=1.0,
         ):
+    psf = get_psf(zoom_factor=zoom_factor)
+
     if gas is None:
         gas = Particles()
 

@@ -7,6 +7,7 @@ from __future__ import (
 from amuse.units import units, constants, nbody_system
 from amuse.datamodel import Particles
 from amuse.io import read_set_from_file
+from amuse.datamodel.rotation import rotate
 
 from fresco.ubvinew import rgb_frame
 from fresco.fieldstars import new_field_stars
@@ -100,6 +101,34 @@ def new_argument_parser():
             type=int,
             help='add N field stars (optional) [0]',
             )
+    parser.add_argument(
+            '--ax',
+            dest='angle_x',
+            default=0,
+            type=float,
+            help='Rotation angle around x-axis in deg [0]',
+            )
+    parser.add_argument(
+            '--ay',
+            dest='angle_y',
+            default=0,
+            type=float,
+            help='Rotation angle around y-axis in deg [0]',
+            )
+    parser.add_argument(
+            '--az',
+            dest='angle_z',
+            default=0,
+            type=float,
+            help='Rotation angle around z-axis in deg [0]',
+            )
+    parser.add_argument(
+            '--px',
+            dest='pixels',
+            default=2048,
+            type=int,
+            help='Number of pixels along each axis [2048]',
+            )
     return parser.parse_args()
 
 
@@ -153,7 +182,8 @@ def make_image(
         sourcebands="ubvri",
         vmax=None,
         calc_temperature=True,
-        mapper_code=None  # "FiMap"
+        mapper_code=None,  # "FiMap"
+        zoom_factor=1.0,
         ):
     """
     Makes image from gas and stars
@@ -200,6 +230,7 @@ def make_image(
                 vmax=vmax,
                 mapper_factory=mapper,
                 mapper_code=mapper_code,
+                zoom_factor=zoom_factor,
                 )
     return image
 
@@ -230,6 +261,7 @@ def image_from_stars(
         vmax=None,
         mapper_factory=None,
         mapper_code=None,
+        zoom_factor=1.0,
         ):
     if calc_temperature:
         # calculates the temperature of the stars from their total luminosity
@@ -251,6 +283,7 @@ def image_from_stars(
             mapper_factory=mapper_factory,
             gas=gas,
             mapper_code=mapper_code,
+            zoom_factor=zoom_factor,
             )
     return rgb['pixels']
 
@@ -272,6 +305,9 @@ if __name__ == "__main__":
         mode = "stars_and_gas"
 
     plot_axes = args.plot_axes
+    angle_x = args.angle_x | units.deg
+    angle_y = args.angle_y | units.deg
+    angle_z = args.angle_z | units.deg
     sourcebands = args.sourcebands
     age = args.age | units.Myr
     # FIXME this should depend on the distance!
@@ -287,7 +323,10 @@ if __name__ == "__main__":
     # fixed number, equal to the number of pixels of the ccd for which the psf
     # was made.  Also, the image should reflect the distance to the "observed"
     # cluster.
-    image_size = [2048, 2048]
+    pixels = args.pixels
+    image_size = [pixels, pixels]
+    # If the nr of pixels is changed, zoom the PSF accordingly.
+    zoom_factor = pixels/2048.
     if plot_axes:
         left = 0.15
         bottom = 0.15
@@ -378,6 +417,14 @@ if __name__ == "__main__":
             image_width,
             )
 
+    if (
+            (angle_x != 0 | units.deg)
+            or (angle_y != 0 | units.deg)
+            or (angle_z != 0 | units.deg)
+            ):
+        rotate(stars, angle_x, angle_y, angle_z)
+        rotate(gas, angle_x, angle_y, angle_z)
+
     image = make_image(
             mode,
             converter,
@@ -390,6 +437,7 @@ if __name__ == "__main__":
             age=age,
             vmax=vmax,
             sourcebands=sourcebands,
+            zoom_factor=zoom_factor,
             )
 
     plt.imshow(
