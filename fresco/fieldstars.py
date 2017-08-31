@@ -5,7 +5,7 @@ from __future__ import (
         )
 import numpy as np
 from amuse.datamodel import Particles
-from amuse.units import units,
+from amuse.units import units
 from amuse.ic.salpeter import new_salpeter_mass_distribution
 
 
