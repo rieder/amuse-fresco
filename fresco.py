@@ -12,6 +12,8 @@ from amuse.datamodel.rotation import rotate
 from fresco.ubvinew import rgb_frame
 from fresco.fieldstars import new_field_stars
 
+from scipy.ndimage import gaussian_filter
+
 import numpy as np
 # import matplotlib
 # matplotlib.use('Agg')
@@ -129,6 +131,19 @@ def new_argument_parser():
             type=int,
             help='Number of pixels along each axis [2048]',
             )
+    parser.add_argument(
+            '--psf',
+            dest='psf_type',
+            default='hubble',
+            help='PSF type (valid: [hubble], gaussian)',
+            )
+    parser.add_argument(
+            '--sigma',
+            dest='psf_sigma',
+            default=1.0,
+            type=float,
+            help='PSF sigma (if PSF type is gaussian)',
+            )
     return parser.parse_args()
 
 
@@ -184,11 +199,15 @@ def make_image(
         calc_temperature=True,
         mapper_code=None,  # "FiMap"
         zoom_factor=1.0,
+        psf_type="hubble",
+        psf_sigma=1.0,
         ):
     """
     Makes image from gas and stars
     """
-    if mode == "extinction":
+    if ("extinction" in mode) or ("stars" not in mode):
+        # Extinction can currently only be handled with FiMap
+        # Gas-only can currently only be handled with FiMap
         mapper_code = "FiMap"
 
     if mapper_code == "FiMap":
@@ -209,13 +228,14 @@ def make_image(
             # mapper.parameters.image_angle = horizontal_angle
             # mapper.parameters.viewpoint = viewpoint
             mapper.parameters.extinction_flag =\
-                True if mode == "extinction" else False
+                True if "extinction" in mode else False
             return mapper
     else:
+        # Gridify as default
         mapper = None
         mapper_code = "gridify"
 
-    if mode == "gas":
+    if "stars" not in mode:
         image = column_density_map(mapper, gas)
     else:
         image = image_from_stars(
@@ -231,6 +251,8 @@ def make_image(
                 mapper_factory=mapper,
                 mapper_code=mapper_code,
                 zoom_factor=zoom_factor,
+                psf_type=psf_type,
+                psf_sigma=psf_sigma,
                 )
     return image
 
@@ -245,7 +267,7 @@ def column_density_map(mapper, part):
     # print part.weight.sum()
     # print projected.min(),projected.max(),projected.mean(),projected.sum()
     mapper.stop()
-    im = np.transpose(projected)
+    im = gaussian_filter(np.transpose(projected), sigma=psf_sigma, order=0)
     return im
 
 
@@ -262,6 +284,8 @@ def image_from_stars(
         mapper_factory=None,
         mapper_code=None,
         zoom_factor=1.0,
+        psf_type="hubble",
+        psf_sigma=1.0,
         ):
     if calc_temperature:
         # calculates the temperature of the stars from their total luminosity
@@ -284,6 +308,8 @@ def image_from_stars(
             gas=gas,
             mapper_code=mapper_code,
             zoom_factor=zoom_factor,
+            psf_type=psf_type,
+            psf_sigma=psf_sigma,
             )
     return rgb['pixels']
 
@@ -299,16 +325,21 @@ if __name__ == "__main__":
     filetype = args.filetype
     np.random.seed(args.seed)
     se_code = "SSE"
+    mode = []
     if args.calculate_extinction:
-        mode = "extinction"
-    else:
-        mode = "stars_and_gas"
+        mode.append("extinction")
 
     plot_axes = args.plot_axes
     angle_x = args.angle_x | units.deg
     angle_y = args.angle_y | units.deg
     angle_z = args.angle_z | units.deg
     sourcebands = args.sourcebands
+    psf_type = args.psf_type.lower()
+    if psf_type not in ["hubble", "gaussian"]:
+        print("Invalid PSF type: %s" % psf_type)
+        exit()
+    psf_sigma = args.psf_sigma
+
     age = args.age | units.Myr
     # FIXME this should depend on the distance!
     # size = fixed at nr of arcmin
@@ -381,6 +412,8 @@ if __name__ == "__main__":
         evolve_to_age(fieldstars, 0 | units.yr, se=se_code)
         # TODO: add distance modulus
         stars.add_particles(fieldstars)
+    if len(stars) > 0:
+        mode.append("stars")
 
     if gasfilename:
         gas = read_set_from_file(
@@ -388,12 +421,18 @@ if __name__ == "__main__":
                 filetype,
                 close_file=True,
                 )
-        if not com:
+        if "stas" not in mode:
             com = gas.center_of_mass()
         gas.position -= com
+        # Gadget and Fi disagree on the definition of h_smooth.
+        # For gadget, need to divide by 2 to get the Fi value (??)
+        gas.h_smooth *= 0.5
+        gas.radius = gas.h_smooth
     else:
         gas = Particles()
-    gas.h_smooth = 0.05 | units.parsec
+    if len(gas) > 0:
+        mode.append("gas")
+    # gas.h_smooth = 0.05 | units.parsec
 
     # FIXME: add these features
     # - Rotate so that xy = observed x/y axes of figure
@@ -413,7 +452,7 @@ if __name__ == "__main__":
     ax.spines['left'].set_visible(False)
 
     converter = nbody_system.nbody_to_si(
-            stars.total_mass(),
+            stars.total_mass() if "stars" in mode else gas.total_mass(),
             image_width,
             )
 
@@ -438,6 +477,8 @@ if __name__ == "__main__":
             vmax=vmax,
             sourcebands=sourcebands,
             zoom_factor=zoom_factor,
+            psf_type=psf_type,
+            psf_sigma=psf_sigma,
             )
 
     plt.imshow(

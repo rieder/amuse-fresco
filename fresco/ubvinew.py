@@ -6,7 +6,7 @@ from __future__ import (
 import os
 
 import numpy
-from scipy.ndimage import zoom
+from scipy.ndimage import zoom, gaussian_filter
 
 # from numpy.fft import fft2, ifft2
 # from numpy import log
@@ -116,7 +116,7 @@ def assign_weights_and_opacities(
                 (gas.x-star.x)**2
                 + (gas.y-star.y)**2
                 + (gas.z-star.z)**2
-                + 0.25 * gas.h_smooth**2
+                + 0.25 * gas.radius**2
                 )
         flux = getattr(star, band+"_band") / (4*numpy.pi*d2)
         # flux = getattr(star, "v_band") / (4*numpy.pi*d2)
@@ -142,8 +142,9 @@ def rgb_frame(
         gas=None,
         mapper_code=None,
         zoom_factor=1.0,
+        psf_type="hubble",
+        psf_sigma=1.0,
         ):
-    psf = get_psf(zoom_factor=zoom_factor)
 
     if gas is None:
         gas = Particles()
@@ -222,22 +223,28 @@ def rgb_frame(
 
     print("..convolving..")
 
-    if multi_psf:
-        a = numpy.arange(image_size[0])/float(image_size[0]-1)
-        b = numpy.arange(image_size[1])/float(image_size[1]-1)
-        w1 = numpy.outer(a, b)
-        w2 = numpy.outer(1.-a, b)
-        w3 = numpy.outer(a, 1.-b)
-        w4 = numpy.outer(1.-a, 1.-b)
+    if psf_type == "hubble":
+        psf = get_psf(zoom_factor=zoom_factor)
+        if multi_psf:
+            a = numpy.arange(image_size[0])/float(image_size[0]-1)
+            b = numpy.arange(image_size[1])/float(image_size[1]-1)
+            w1 = numpy.outer(a, b)
+            w2 = numpy.outer(1.-a, b)
+            w3 = numpy.outer(a, 1.-b)
+            w4 = numpy.outer(1.-a, 1.-b)
+            for key, val in raw_images.items():
+                im1 = Convolve(val, psf[key+'0'])
+                im2 = Convolve(val, psf[key+'1'])
+                im3 = Convolve(val, psf[key+'2'])
+                im4 = Convolve(val, psf[key+'3'])
+                convolved_images[key] = w1*im1+w2*im2+w3*im3+w4*im4
+        else:
+            for key, val in raw_images.items():
+                im1 = Convolve(val, psf[key+'0'])
+                convolved_images[key] = im1
+    elif psf_type == "gaussian":
         for key, val in raw_images.items():
-            im1 = Convolve(val, psf[key+'0'])
-            im2 = Convolve(val, psf[key+'1'])
-            im3 = Convolve(val, psf[key+'2'])
-            im4 = Convolve(val, psf[key+'3'])
-            convolved_images[key] = w1*im1+w2*im2+w3*im3+w4*im4
-    else:
-        for key, val in raw_images.items():
-            im1 = Convolve(val, psf[key+'0'])
+            im1 = gaussian_filter(val, sigma=psf_sigma, order=0)
             convolved_images[key] = im1
 
     print("..conversion to rgb")
