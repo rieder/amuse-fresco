@@ -13,15 +13,11 @@ import os
 import numpy
 from scipy.ndimage import zoom, gaussian_filter
 
-# from numpy.fft import fft2, ifft2
-# from numpy import log
-
 from amuse.datamodel import (
         Particles,
         )
 from amuse.units import (
         units,
-        # nbody_system,
         )
 
 # import logging
@@ -124,7 +120,6 @@ def assign_weights_and_opacities(
                 + 0.25 * gas.radius**2
                 )
         flux = getattr(star, band+"_band") / (4*numpy.pi*d2)
-        # flux = getattr(star, "v_band") / (4*numpy.pi*d2)
         weight += (
                 flux
                 * mapper_gas.opacity_area
@@ -149,12 +144,14 @@ def rgb_frame(
         zoom_factor=1.0,
         psf_type="hubble",
         psf_sigma=1.0,
+        verbose=True,
         ):
 
     if gas is None:
         gas = Particles()
 
-    print("luminosities..")
+    if verbose:
+        print("luminosities..")
 
     for band in sourcebands:
         setattr(
@@ -166,8 +163,8 @@ def rgb_frame(
                     lambda x: B_lambda(x, stars.temperature),
                     ),
                 )
-
-    print("..raw images..")
+    if verbose:
+        print("..raw images..")
 
     if mapper_code != "gridify":
         # Use mapper to make raw (pre-convolved) images
@@ -226,7 +223,8 @@ def rgb_frame(
 
     convolved_images = dict()
 
-    print("..convolving..")
+    if verbose:
+        print("..convolving..")
 
     if psf_type == "hubble":
         psf = get_psf(zoom_factor=zoom_factor)
@@ -252,7 +250,8 @@ def rgb_frame(
             im1 = gaussian_filter(val, sigma=psf_sigma, order=0)
             convolved_images[key] = im1
 
-    print("..conversion to rgb")
+    if verbose:
+        print("..conversion to rgb")
     filter_data = get_filter_data()
     source = [filter_data['bess-'+x+'.pass'] for x in sourcebands]
 
