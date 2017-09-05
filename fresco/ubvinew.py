@@ -181,14 +181,14 @@ def rgb_frame(
                     gas_in_mapper,
                     stars,
                     gas,
-                    Nstar=200,
+                    Nstar=500,
                     )
             # mapper.particles.weight = getattr(
             #         stars,
             #         band+"_band"
             #         ).value_in(units.LSun)
             im = mapper.image.pixel_value
-            raw_images[band] = im
+            raw_images[band] = numpy.fliplr(im)
 
         mapper.stop()
     else:
@@ -205,14 +205,14 @@ def rgb_frame(
                     gas_in_mapper,
                     stars,
                     gas,
-                    Nstar=200,
+                    Nstar=500,
                     )
             allparticles = Particles()
             allparticles.add_particles(stars_in_mapper)
             allparticles.add_particles(gas_in_mapper)
             im = map_to_grid(
                     allparticles.x,
-                    -allparticles.y,
+                    allparticles.y,
                     weights=allparticles.weight,
                     image_size=image_size,
                     image_width=image_width,
@@ -279,18 +279,15 @@ def rgb_frame(
 
     srgb = conv_lin_to_sRGB.convert(srgb_l/vmax)
 
-    # r = srgb[0,:,:].transpose()
-    # g = srgb[1,:,:].transpose()
-    # b = srgb[2,:,:].transpose()
-    r = numpy.fliplr(srgb[0, :, :])
-    g = numpy.fliplr(srgb[1, :, :])
-    b = numpy.fliplr(srgb[2, :, :])
+    # r = numpy.fliplr(srgb[0, :, :])
+    # g = numpy.fliplr(srgb[1, :, :])
+    # b = numpy.fliplr(srgb[2, :, :])
 
     rgb = numpy.zeros(image_size[0] * image_size[1] * 3)
     rgb = rgb.reshape(image_size[0], image_size[1], 3)
-    rgb[:, :, 0] = r
-    rgb[:, :, 1] = g
-    rgb[:, :, 2] = b
+    rgb[:, :, 0] = srgb[0, :, :].T
+    rgb[:, :, 1] = srgb[1, :, :].T
+    rgb[:, :, 2] = srgb[2, :, :].T
 
     image = dict(
         pixels=rgb,
