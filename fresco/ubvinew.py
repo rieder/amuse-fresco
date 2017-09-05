@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+"""
+Contains helper functions to create images from particle positions and
+luminosities.
+"""
+
 from __future__ import (
         print_function,
         division,

@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+Maps particle positions to a grid, calculates the luminosity in each grid cell.
+"""
 import numpy as np
 from amuse.units import units
 

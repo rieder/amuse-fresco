@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+Fresco creates a "simulated observation" of a set of particles.
+Particles can be "stars" (point sources emitting light) or "gas" (emitting,
+reflecting and/or obscuring light). Gas may also be displayed with contour
+lines.
+"""
+
 from __future__ import (
         print_function,
         division
