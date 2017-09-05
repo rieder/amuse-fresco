@@ -144,6 +144,13 @@ def new_argument_parser():
             type=float,
             help='PSF sigma (if PSF type is gaussian)',
             )
+    parser.add_argument(
+            '--contours',
+            dest='contours',
+            action='store_true',
+            default=False,
+            help='Plot gas contour lines [False]',
+            )
     return parser.parse_args()
 
 
@@ -205,9 +212,8 @@ def make_image(
     """
     Makes image from gas and stars
     """
-    if ("extinction" in mode) or ("stars" not in mode):
+    if ("extinction" in mode):
         # Extinction can currently only be handled with FiMap
-        # Gas-only can currently only be handled with FiMap
         mapper_code = "FiMap"
 
     if mapper_code == "FiMap":
@@ -236,7 +242,16 @@ def make_image(
         mapper_code = "gridify"
 
     if "stars" not in mode:
-        image = column_density_map(mapper, gas)
+        image = column_density_map(
+                gas,
+                image_width=image_width,
+                image_size=image_size,
+                mapper_factory=mapper,
+                mapper_code=mapper_code,
+                zoom_factor=zoom_factor,
+                psf_type=psf_type,
+                psf_sigma=psf_sigma,
+                )
     else:
         image = image_from_stars(
                 stars,
@@ -257,17 +272,41 @@ def make_image(
     return image
 
 
-def column_density_map(mapper, part):
-    if callable(mapper):
-        mapper = mapper()
+def column_density_map(
+        gas,
+        image_width=10. | units.parsec,
+        image_size=[1024, 1024],
+        mapper_factory=None,
+        mapper_code=None,
+        zoom_factor=1.0,
+        psf_type="gaussian",
+        psf_sigma=10.0,
+        ):
+    if mapper_code == "FiMap":
+        if callable(mapper_factory):
+            mapper = mapper_factory()
 
-    p = mapper.particles.add_particles(part)
-    p.weight = part.mass.value_in(units.amu)
-    projected = mapper.image.pixel_value
-    # print part.weight.sum()
-    # print projected.min(),projected.max(),projected.mean(),projected.sum()
-    mapper.stop()
-    im = gaussian_filter(np.transpose(projected), sigma=psf_sigma, order=0)
+        p = mapper.particles.add_particles(gas)
+        p.weight = gas.mass.value_in(units.amu)
+        projected = mapper.image.pixel_value
+        mapper.stop()
+        im = gaussian_filter(
+                projected,
+                sigma=psf_sigma,
+                order=0,
+                )
+    else:
+        from fresco.gridify import map_to_grid
+        gas_in_mapper = gas.copy()
+        gas_in_mapper.weight = gas_in_mapper.mass.value_in(units.amu)
+        raw_image = map_to_grid(
+                gas_in_mapper.x,
+                gas_in_mapper.y,
+                weights=gas_in_mapper.weight,
+                image_size=image_size,
+                image_width=image_width,
+                )
+        im = gaussian_filter(raw_image, sigma=psf_sigma, order=0).T
     return im
 
 
@@ -323,6 +362,7 @@ if __name__ == "__main__":
     vmax = args.vmax if args.vmax > 0 else None
     n_fieldstars = args.n_fieldstars
     filetype = args.filetype
+    contours = args.contours
     np.random.seed(args.seed)
     se_code = "SSE"
     mode = []
@@ -432,6 +472,8 @@ if __name__ == "__main__":
         gas = Particles()
     if len(gas) > 0:
         mode.append("gas")
+        if contours:
+            mode.append("contours")
     # gas.h_smooth = 0.05 | units.parsec
 
     # FIXME: add these features
@@ -450,6 +492,7 @@ if __name__ == "__main__":
     ax.spines['right'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
     ax.spines['left'].set_visible(False)
+    ax.set_facecolor('black')
 
     converter = nbody_system.nbody_to_si(
             stars.total_mass() if "stars" in mode else gas.total_mass(),
@@ -480,17 +523,45 @@ if __name__ == "__main__":
             psf_type=psf_type,
             psf_sigma=psf_sigma,
             )
+    if ("contours" in mode) and ("gas" in mode):
+        gascontours = column_density_map(
+                gas,
+                image_width=image_width,
+                image_size=image_size,
+                )
 
-    plt.imshow(
-            image,
-            origin='lower',
-            extent=[
-                xmin,
-                xmax,
-                ymin,
-                ymax,
-                ],
-            )
+    if "stars" in mode:
+        ax.imshow(
+                image,
+                origin='lower',
+                extent=[
+                    xmin,
+                    xmax,
+                    ymin,
+                    ymax,
+                    ],
+                )
+    if ("contours" in mode) and ("gas" in mode):
+        gascontours[np.isnan(gascontours)] = 0.0
+        vmax = np.max(gascontours) / 2
+        # vmin = np.min(image[np.where(image > 0.0)])
+        vmin = vmax / 100
+        levels = 10**(np.linspace(np.log10(vmin), np.log10(vmax), num=5))[1:]
+        print(vmin, vmax)
+        print(levels)
+        ax.contour(
+                gascontours,
+                origin='lower',
+                levels=levels,
+                colors="white",
+                linewidths=0.1,
+                extent=[
+                    xmin,
+                    xmax,
+                    ymin,
+                    ymax,
+                    ],
+                )
 
     plt.savefig(
             imagefilename,
