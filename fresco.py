@@ -215,6 +215,7 @@ def make_image(
         zoom_factor=1.0,
         psf_type="hubble",
         psf_sigma=1.0,
+        return_vmax=False,
         ):
     """
     Makes image from gas and stars
@@ -275,6 +276,7 @@ def make_image(
                 zoom_factor=zoom_factor,
                 psf_type=psf_type,
                 psf_sigma=psf_sigma,
+                return_vmax=return_vmax,
                 )
     return image
 
@@ -332,6 +334,7 @@ def image_from_stars(
         zoom_factor=1.0,
         psf_type="hubble",
         psf_sigma=1.0,
+        return_vmax=False,
         ):
     if calc_temperature:
         # calculates the temperature of the stars from their total luminosity
@@ -357,7 +360,10 @@ def image_from_stars(
             psf_type=psf_type,
             psf_sigma=psf_sigma,
             )
-    return rgb['pixels']
+    if return_vmax:
+        return rgb['pixels'], vmax
+    else:
+        return rgb['pixels']
 
 
 def initialise_image(
