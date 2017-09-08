@@ -200,10 +200,10 @@ def calculate_effective_temperature(luminosity, radius):
 
 
 def make_image(
-        mode,
-        converter,
-        gas,
         stars,
+        gas,
+        mode=["stars", "gas"],
+        converter=None,
         image_width=10. | units.parsec,
         image_size=[1024, 1024],
         percentile=0.9995,
@@ -403,8 +403,6 @@ def initialise_image(
         # Simply clear and re-use the old figure
         ax = fig.get_axes()[subplot]
         ax.cla()
-        ax.set_xlim([xmin, xmax])
-        ax.set_ylim([ymin, ymax])
     return fig
 
 
@@ -538,10 +536,10 @@ if __name__ == "__main__":
     # - calculate vmax based on nr of photons/exposure time
 
     image = make_image(
-            mode,
-            converter,
-            gas,
             stars,
+            gas,
+            mode=mode,
+            converter=converter,
             image_width=image_width,
             image_size=image_size,
             percentile=percentile,
@@ -553,12 +551,6 @@ if __name__ == "__main__":
             psf_type=psf_type,
             psf_sigma=psf_sigma,
             )
-    if ("contours" in mode) and ("gas" in mode):
-        gascontours = column_density_map(
-                gas,
-                image_width=image_width,
-                image_size=image_size,
-                )
 
     if "stars" in mode:
         ax.imshow(
@@ -572,6 +564,11 @@ if __name__ == "__main__":
                     ],
                 )
     if ("contours" in mode) and ("gas" in mode):
+        gascontours = column_density_map(
+                gas,
+                image_width=image_width,
+                image_size=image_size,
+                )
         gascontours[np.isnan(gascontours)] = 0.0
         vmax = np.max(gascontours) / 2
         # vmin = np.min(image[np.where(image > 0.0)])
