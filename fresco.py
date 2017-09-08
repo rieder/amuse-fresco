@@ -360,69 +360,94 @@ def image_from_stars(
     return rgb['pixels']
 
 
+def initialise_image(
+        fig=None,
+        dpi=150,
+        image_size=[2048, 2048],
+        length_unit=units.parsec,
+        image_width=5 | units.parsec,
+        plot_axes=True,
+        subplot=0,
+        ):
+    if fig is None:
+        if plot_axes:
+            left = 0.15
+            bottom = 0.15
+        else:
+            left = 0.
+            bottom = 0.
+        right = 1.0
+        top = 1.0
+        figwidth = image_size[0] / dpi / (right - left)
+        figheight = image_size[1] / dpi / (top - bottom)
+        figsize = (figwidth, figheight)
+
+        xmin = -0.5 * image_width.value_in(length_unit)
+        xmax = 0.5 * image_width.value_in(length_unit)
+        ymin = -0.5 * image_width.value_in(length_unit)
+        ymax = 0.5 * image_width.value_in(length_unit)
+
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=figsize, dpi=dpi)
+        fig.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
+        ax.set_xlim([xmin, xmax])
+        ax.set_ylim([ymin, ymax])
+        ax.set_xlabel("[%s]" % (length_unit))
+        ax.set_ylabel("[%s]" % (length_unit))
+        ax.set_aspect(1)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.set_facecolor('black')
+    else:
+        # Simply clear and re-use the old figure
+        ax = fig.get_axes()[subplot]
+        ax.cla()
+        ax.set_xlim([xmin, xmax])
+        ax.set_ylim([ymin, ymax])
+    return fig
+
+
 if __name__ == "__main__":
+    mode = []
+
+    # Fixed settings
+    stellar_evolution = True
+    se_code = "SSE"
+    length_unit = units.parsec
+    dpi = 600
+    percentile = 0.9995  # for determining vmax
+
+    # Parse arguments
     args = new_argument_parser()
     starsfilename = args.starsfilename
     gasfilename = args.gasfilename
     imagefilename = args.imagefilename
-    stellar_evolution = True
     vmax = args.vmax if args.vmax > 0 else None
     n_fieldstars = args.n_fieldstars
     filetype = args.filetype
     contours = args.contours
     np.random.seed(args.seed)
-    se_code = "SSE"
-    mode = []
-    if args.calculate_extinction:
-        mode.append("extinction")
-
     plot_axes = args.plot_axes
     angle_x = args.angle_x | units.deg
     angle_y = args.angle_y | units.deg
     angle_z = args.angle_z | units.deg
     sourcebands = args.sourcebands
     psf_type = args.psf_type.lower()
+    psf_sigma = args.psf_sigma
+    age = args.age | units.Myr
+    image_width = args.width | units.parsec
+    pixels = args.pixels
+
+    # Derived settings
+    if args.calculate_extinction:
+        mode.append("extinction")
     if psf_type not in ["hubble", "gaussian"]:
         print("Invalid PSF type: %s" % psf_type)
         exit()
-    psf_sigma = args.psf_sigma
-
-    age = args.age | units.Myr
-    # FIXME this should depend on the distance!
-    # size = fixed at nr of arcmin
-    image_width = args.width | units.parsec
-
-    length_unit = units.parsec
-    dpi = 600
-    image_width_arcsec = 160
-
-    # FIXME the psf is fixed pixel size, so the pixels in the image here
-    # reflects how much pixels will be spread!  In principle, this should be a
-    # fixed number, equal to the number of pixels of the ccd for which the psf
-    # was made.  Also, the image should reflect the distance to the "observed"
-    # cluster.
-    pixels = args.pixels
     image_size = [pixels, pixels]
     # If the nr of pixels is changed, zoom the PSF accordingly.
     zoom_factor = pixels/2048.
-    if plot_axes:
-        left = 0.15
-        bottom = 0.15
-    else:
-        left = 0.
-        bottom = 0.
-    right = 1.0
-    top = 1.0
-    figwidth = image_size[0] / dpi / (right - left)
-    figheight = image_size[1] / dpi / (top - bottom)
-    figsize = (figwidth, figheight)
-
-    percentile = 0.9995  # for determining vmax
-
-    xmin = -0.5 * image_width.value_in(length_unit)
-    xmax = 0.5 * image_width.value_in(length_unit)
-    ymin = -0.5 * image_width.value_in(length_unit)
-    ymax = 0.5 * image_width.value_in(length_unit)
 
     if starsfilename:
         stars = read_set_from_file(
@@ -483,24 +508,6 @@ if __name__ == "__main__":
             mode.append("contours")
     # gas.h_smooth = 0.05 | units.parsec
 
-    # FIXME: add these features
-    # - Rotate so that xy = observed x/y axes of figure
-    # - Scale positions to desired ra/dec (script Alison)
-    # - calculate vmax based on nr of photons/exposure time
-
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=figsize, dpi=dpi)
-    fig.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
-    ax.set_xlim([xmin, xmax])
-    ax.set_ylim([ymin, ymax])
-    ax.set_xlabel("[%s]" % (length_unit))
-    ax.set_ylabel("[%s]" % (length_unit))
-    ax.set_aspect(1)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['left'].set_visible(False)
-    ax.set_facecolor('black')
-
     converter = nbody_system.nbody_to_si(
             stars.total_mass() if "stars" in mode else gas.total_mass(),
             image_width,
@@ -513,6 +520,22 @@ if __name__ == "__main__":
             ):
         rotate(stars, angle_x, angle_y, angle_z)
         rotate(gas, angle_x, angle_y, angle_z)
+
+    fig = initialise_image(
+            dpi=dpi,
+            image_size=image_size,
+            length_unit=length_unit,
+            image_width=image_width,
+            plot_axes=plot_axes,
+            )
+    ax = fig.get_axes()[0]
+    xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
+
+    # FIXME: add these features
+    # - Rotate so that xy = observed x/y axes of figure
+    # - Scale positions to desired ra/dec (script Alison)
+    # - calculate vmax based on nr of photons/exposure time
 
     image = make_image(
             mode,
@@ -554,8 +577,8 @@ if __name__ == "__main__":
         # vmin = np.min(image[np.where(image > 0.0)])
         vmin = vmax / 100
         levels = 10**(np.linspace(np.log10(vmin), np.log10(vmax), num=5))[1:]
-        print(vmin, vmax)
-        print(levels)
+        # print(vmin, vmax)
+        # print(levels)
         ax.contour(
                 gascontours,
                 origin='lower',
