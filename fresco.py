@@ -52,8 +52,14 @@ def new_argument_parser():
     parser.add_argument(
             '-o',
             dest='imagefilename',
-            default='test.png',
-            help='write image to this file [test.png]',
+            default='test',
+            help='write image to this file [test]',
+            )
+    parser.add_argument(
+            '--imagetype',
+            dest='imagetype',
+            default='png',
+            help='image file type [png]',
             )
     parser.add_argument(
             '-b',
@@ -115,21 +121,28 @@ def new_argument_parser():
             dest='angle_x',
             default=0,
             type=float,
-            help='Rotation angle around x-axis in deg [0]',
+            help='Rotation step around x-axis in deg [0]',
             )
     parser.add_argument(
             '--ay',
             dest='angle_y',
             default=0,
             type=float,
-            help='Rotation angle around y-axis in deg [0]',
+            help='Rotation step around y-axis in deg [0]',
             )
     parser.add_argument(
             '--az',
             dest='angle_z',
             default=0,
             type=float,
-            help='Rotation angle around z-axis in deg [0]',
+            help='Rotation step around z-axis in deg [0]',
+            )
+    parser.add_argument(
+            '--frames',
+            dest='frames',
+            default=1,
+            type=int,
+            help='Number of frames (>1: rotate around x,y,z) [1]',
             )
     parser.add_argument(
             '--px',
@@ -259,6 +272,7 @@ def make_image(
                 zoom_factor=zoom_factor,
                 psf_type=psf_type,
                 psf_sigma=psf_sigma,
+                return_vmax=return_vmax,
                 )
     else:
         image = image_from_stars(
@@ -290,6 +304,7 @@ def column_density_map(
         zoom_factor=1.0,
         psf_type="gaussian",
         psf_sigma=10.0,
+        return_vmax=False,
         ):
     if mapper_code == "FiMap":
         if callable(mapper_factory):
@@ -316,7 +331,10 @@ def column_density_map(
                 image_width=image_width,
                 )
         im = gaussian_filter(raw_image, sigma=psf_sigma, order=0).T
-    return im
+    if return_vmax:
+        return (im, -1)
+    else:
+        return im
 
 
 def image_from_stars(
@@ -427,6 +445,7 @@ if __name__ == "__main__":
     starsfilename = args.starsfilename
     gasfilename = args.gasfilename
     imagefilename = args.imagefilename
+    imagetype = args.imagetype
     vmax = args.vmax if args.vmax > 0 else None
     n_fieldstars = args.n_fieldstars
     filetype = args.filetype
@@ -442,6 +461,7 @@ if __name__ == "__main__":
     age = args.age | units.Myr
     image_width = args.width | units.parsec
     pixels = args.pixels
+    frames = args.frames
 
     # Derived settings
     if args.calculate_extinction:
@@ -497,7 +517,7 @@ if __name__ == "__main__":
                 filetype,
                 close_file=True,
                 )
-        if "stas" not in mode:
+        if "stars" not in mode:
             com = gas.center_of_mass()
         gas.position -= com
         # Gadget and Fi disagree on the definition of h_smooth.
@@ -517,14 +537,7 @@ if __name__ == "__main__":
             image_width,
             )
 
-    if (
-            (angle_x != 0 | units.deg)
-            or (angle_y != 0 | units.deg)
-            or (angle_z != 0 | units.deg)
-            ):
-        rotate(stars, angle_x, angle_y, angle_z)
-        rotate(gas, angle_x, angle_y, angle_z)
-
+    # Initialise figure and axes
     fig = initialise_image(
             dpi=dpi,
             image_size=image_size,
@@ -536,67 +549,100 @@ if __name__ == "__main__":
     xmin, xmax = ax.get_xlim()
     ymin, ymax = ax.get_ylim()
 
-    # FIXME: add these features
-    # - Rotate so that xy = observed x/y axes of figure
-    # - Scale positions to desired ra/dec (script Alison)
-    # - calculate vmax based on nr of photons/exposure time
+    for frame in range(frames):
+        fig = initialise_image(fig)
 
-    image = make_image(
-            stars,
-            gas,
-            mode=mode,
-            converter=converter,
-            image_width=image_width,
-            image_size=image_size,
-            percentile=percentile,
-            calc_temperature=True,
-            age=age,
-            vmax=vmax,
-            sourcebands=sourcebands,
-            zoom_factor=zoom_factor,
-            psf_type=psf_type,
-            psf_sigma=psf_sigma,
-            )
+        if (frame != 0) or (frames == 1):
+            if len(stars) > 0:
+                rotate(stars, angle_x, angle_y, angle_z)
+            if len(gas) > 0:
+                rotate(gas, angle_x, angle_y, angle_z)
 
-    if "stars" in mode:
-        ax.imshow(
-                image,
-                origin='lower',
-                extent=[
-                    xmin,
-                    xmax,
-                    ymin,
-                    ymax,
-                    ],
-                )
-    if ("contours" in mode) and ("gas" in mode):
-        gascontours = column_density_map(
+        image, vmax = make_image(
+                stars,
                 gas,
+                mode=mode,
+                converter=converter,
                 image_width=image_width,
                 image_size=image_size,
-                )
-        gascontours[np.isnan(gascontours)] = 0.0
-        vmax = np.max(gascontours) / 2
-        # vmin = np.min(image[np.where(image > 0.0)])
-        vmin = vmax / 100
-        levels = 10**(np.linspace(np.log10(vmin), np.log10(vmax), num=5))[1:]
-        # print(vmin, vmax)
-        # print(levels)
-        ax.contour(
-                gascontours,
-                origin='lower',
-                levels=levels,
-                colors="white",
-                linewidths=0.1,
-                extent=[
-                    xmin,
-                    xmax,
-                    ymin,
-                    ymax,
-                    ],
+                percentile=percentile,
+                calc_temperature=True,
+                age=age,
+                vmax=vmax,
+                sourcebands=sourcebands,
+                zoom_factor=zoom_factor,
+                psf_type=psf_type,
+                psf_sigma=psf_sigma,
+                return_vmax=True,
                 )
 
-    plt.savefig(
-            imagefilename,
-            dpi=dpi,
-            )
+        if "stars" in mode:
+            ax.imshow(
+                    image,
+                    origin='lower',
+                    extent=[
+                        xmin,
+                        xmax,
+                        ymin,
+                        ymax,
+                        ],
+                    )
+            if ("contours" in mode) and ("gas" in mode):
+                gascontours = column_density_map(
+                        gas,
+                        image_width=image_width,
+                        image_size=image_size,
+                        )
+                gascontours[np.isnan(gascontours)] = 0.0
+                vmax = np.max(gascontours) / 2
+                # vmin = np.min(image[np.where(image > 0.0)])
+                vmin = vmax / 100
+                levels = 10**(
+                        np.linspace(
+                            np.log10(vmin),
+                            np.log10(vmax),
+                            num=5,
+                            )
+                        )[1:]
+                # print(vmin, vmax)
+                # print(levels)
+                ax.contour(
+                        gascontours,
+                        origin='lower',
+                        levels=levels,
+                        colors="white",
+                        linewidths=0.1,
+                        extent=[
+                            xmin,
+                            xmax,
+                            ymin,
+                            ymax,
+                            ],
+                        )
+        else:
+            image = column_density_map(
+                    gas,
+                    image_width=image_width,
+                    image_size=image_size,
+                    )
+
+            ax.imshow(
+                    image,
+                    origin='lower',
+                    extent=[
+                        xmin,
+                        xmax,
+                        ymin,
+                        ymax,
+                        ],
+                    cmap="gray",
+                    )
+
+        plt.savefig(
+                "%s-%06i.%s" % (
+                    imagefilename,
+                    frame,
+                    imagetype,
+                    ),
+                dpi=dpi,
+                )
