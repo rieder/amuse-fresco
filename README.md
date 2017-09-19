@@ -1,18 +1,20 @@
 # FRESCO
 Fresco aims to simulate observations of particle-based simulations, such as
-those of a star cluster. It creates a Hubble WFC3-like image from an AMUSE-type
-hdf5 file of stars or gas particles (other filetypes, like the Starlab format,
-are also supported). 
+those of a star cluster. It creates an observation-like image from a list of
+stars and/or gas particles. Supported filetypes include AMUSE-type hdf5 files,
+Starlab files and plaintext files.
 
-For stars, the temperature and radius are calculated using the SeBa (default)
-or SSE stellar evolution code, if it is not available in the dataset.
+For stars, the temperature and radius are calculated using a stellar evolution
+code, if these are not already present in the dataset.
 
-Gas/dust particles may also be read, and will cause extinction and reflection
-of light from background- and nearby stars, respectively.
+Gas particles may also be read. In combination with stars, these will cause
+reflection from nearby stars and optionally extinction of light from
+background. Without stars, Fresco will make a density plot of the gas.
+Optionally, the gas may also be indicated with contour lines.
 
-A random field of back/foreground stars may be added to the image, as a way to
-make the image more natural looking or to provide a background that may be
-obscured by the gas/dust particles.
+A random field of background and foreground stars may be added to the image, as
+a way to make the image more natural looking and/or to provide a background
+that may be obscured by the gas/dust particles.
 
 ![Example image](test.png)
 
@@ -22,10 +24,10 @@ obscured by the gas/dust particles.
 - Numpy
 - Matplotlib
 - AMUSE (https://github.com/amusecode/amuse)
-  - FIMap
-  - SSE (optional)
+  - FIMap (only needed for extinction)
+  - SSE or SeBa (optional, for calculating stellar luminosities and radii)
 - Astropy (or Pyfits)
 
 ## Authors
 
-Fresco is written by Inti Pelupessy and Steven Rieder
+Fresco is developed by Inti Pelupessy and Steven Rieder
