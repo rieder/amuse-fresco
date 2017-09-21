@@ -1,4 +1,4 @@
-# FRESCO
+# Fresco
 Fresco aims to simulate observations of particle-based simulations, such as
 those of a star cluster. It creates an observation-like image from a list of
 stars and/or gas particles. Supported filetypes include AMUSE-type hdf5 files,
@@ -24,7 +24,7 @@ that may be obscured by the gas/dust particles.
 - Numpy
 - Matplotlib
 - AMUSE (https://github.com/amusecode/amuse)
-  - FIMap (only needed for extinction)
+  - FIMap (optional, for extinction)
   - SSE or SeBa (optional, for calculating stellar luminosities and radii)
 - Astropy (or Pyfits)
 
