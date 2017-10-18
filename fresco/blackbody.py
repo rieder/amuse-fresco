@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+"""Functions for calculating a black body spectrum.
+
+"""
+
+from __future__ import (
+        print_function,
+        division,
+        )
 import numpy
 
 from amuse.units import units
@@ -77,7 +86,6 @@ def wiens_T_from_lambda_max(l):
 def energy_flux(T, lowfreq=0. | units.s**-1, N=1000):
     nu = (numpy.arange(N+1)+1.)/N*(kB*T)/h*25. + lowfreq
     b = pi*B_nu(nu, T)
-#    return numpy.trapz(b.number,x=nu.number)| (b.unit*nu.unit)
     return (b[1:]+b[:-1]).sum()/2*(nu[1]-nu[0])
 
 
@@ -102,25 +110,25 @@ def total_bolometric_flux(T):
 if __name__ == "__main__":
     T = 10000. | units.K
 
-    print wiens_lambda_max(T)
+    print(wiens_lambda_max(T))
 
-    print energy_flux(T).in_(units.W * units.m**-2)
-    print energy_flux2(T).in_(units.W * units.m**-2)
-    print (sigma*T**4).in_(units.W * units.m**-2)
+    print(energy_flux(T).in_(units.W * units.m**-2))
+    print(energy_flux2(T).in_(units.W * units.m**-2))
+    print((sigma*T**4).in_(units.W * units.m**-2))
 
-    print
+    print()
     nf = photon_flux(T, lowfreq=freq_from_wavenumber(Ry))
-    print numpy.log10(nf.value_in(units.cm**-2 * units.s**-1))
-    print
+    print(numpy.log10(nf.value_in(units.cm**-2 * units.s**-1)))
+    print()
 
     a = photon_flux(T)
-    print numpy.log10(a.value_in(units.cm**-2 * units.s**-1))
+    print(numpy.log10(a.value_in(units.cm**-2 * units.s**-1)))
     b = sigma*T**4 / (kB*T)/2.7
-    print numpy.log10(b.value_in(units.cm**-2 * units.s**-1))
+    print(numpy.log10(b.value_in(units.cm**-2 * units.s**-1)))
 
-    print b/a
-    print nf/b
+    print(b/a)
+    print(nf/b)
 
-    print wiens_T_from_lambda_max(300. | units.nano(units.m))
-    print wiens_T_from_lambda_max(610. | units.nano(units.m))
-    print wiens_T_from_lambda_max(920. | units.nano(units.m))
+    print(wiens_T_from_lambda_max(300. | units.nano(units.m)))
+    print(wiens_T_from_lambda_max(610. | units.nano(units.m)))
+    print(wiens_T_from_lambda_max(920. | units.nano(units.m)))
