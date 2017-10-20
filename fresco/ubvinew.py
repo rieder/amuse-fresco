@@ -195,7 +195,7 @@ def rgb_frame(
         mapper.stop()
     else:
         # Use simpler python mapping script
-        from gridify import map_to_grid
+        from .gridify import map_to_grid
         stars_in_mapper = stars.copy()
         gas_in_mapper = gas.copy()
         raw_images = dict()
@@ -235,18 +235,18 @@ def rgb_frame(
             w2 = numpy.outer(1.-a, b)
             w3 = numpy.outer(a, 1.-b)
             w4 = numpy.outer(1.-a, 1.-b)
-            for key, val in raw_images.items():
+            for key, val in list(raw_images.items()):
                 im1 = Convolve(val, psf[key+'0'])
                 im2 = Convolve(val, psf[key+'1'])
                 im3 = Convolve(val, psf[key+'2'])
                 im4 = Convolve(val, psf[key+'3'])
                 convolved_images[key] = w1*im1+w2*im2+w3*im3+w4*im4
         else:
-            for key, val in raw_images.items():
+            for key, val in list(raw_images.items()):
                 im1 = Convolve(val, psf[key+'0'])
                 convolved_images[key] = im1
     elif psf_type == "gaussian":
-        for key, val in raw_images.items():
+        for key, val in list(raw_images.items()):
             im1 = gaussian_filter(val, sigma=psf_sigma, order=0)
             convolved_images[key] = im1
 
@@ -275,7 +275,7 @@ def rgb_frame(
         flat_sorted = numpy.sort(srgb_l.flatten())
         n = len(flat_sorted)
         vmax = flat_sorted[int(1.-3*(1.-percentile)*n)]
-        print("vmax:", vmax)
+        print(("vmax:", vmax))
     if dryrun:
         return vmax
 

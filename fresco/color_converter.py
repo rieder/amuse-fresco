@@ -1,6 +1,6 @@
 import numpy
 
-from blackbody import B_lambda
+from .blackbody import B_lambda
 
 from amuse.units import (
         units,
@@ -62,7 +62,7 @@ class ColorConverter(object):
         self.dim2 = len(target)
         self.N = N
 
-        larray = lmin+(lmax-lmin)*numpy.array(range(N+1))/N
+        larray = lmin+(lmax-lmin)*numpy.array(list(range(N+1)))/N
 
         Amatrix = numpy.zeros((self.dim, self.dim))
 

@@ -110,25 +110,25 @@ def total_bolometric_flux(T):
 if __name__ == "__main__":
     T = 10000. | units.K
 
-    print(wiens_lambda_max(T))
+    print((wiens_lambda_max(T)))
 
-    print(energy_flux(T).in_(units.W * units.m**-2))
-    print(energy_flux2(T).in_(units.W * units.m**-2))
-    print((sigma*T**4).in_(units.W * units.m**-2))
+    print((energy_flux(T).in_(units.W * units.m**-2)))
+    print((energy_flux2(T).in_(units.W * units.m**-2)))
+    print(((sigma*T**4).in_(units.W * units.m**-2)))
 
     print()
     nf = photon_flux(T, lowfreq=freq_from_wavenumber(Ry))
-    print(numpy.log10(nf.value_in(units.cm**-2 * units.s**-1)))
+    print((numpy.log10(nf.value_in(units.cm**-2 * units.s**-1))))
     print()
 
     a = photon_flux(T)
-    print(numpy.log10(a.value_in(units.cm**-2 * units.s**-1)))
+    print((numpy.log10(a.value_in(units.cm**-2 * units.s**-1))))
     b = sigma*T**4 / (kB*T)/2.7
-    print(numpy.log10(b.value_in(units.cm**-2 * units.s**-1)))
+    print((numpy.log10(b.value_in(units.cm**-2 * units.s**-1))))
 
-    print(b/a)
-    print(nf/b)
+    print((b/a))
+    print((nf/b))
 
-    print(wiens_T_from_lambda_max(300. | units.nano(units.m)))
-    print(wiens_T_from_lambda_max(610. | units.nano(units.m)))
-    print(wiens_T_from_lambda_max(920. | units.nano(units.m)))
+    print((wiens_T_from_lambda_max(300. | units.nano(units.m))))
+    print((wiens_T_from_lambda_max(610. | units.nano(units.m))))
+    print((wiens_T_from_lambda_max(920. | units.nano(units.m))))

@@ -8,7 +8,8 @@ lines.
 
 from __future__ import (
         print_function,
-        division
+        division,
+        absolute_import,
         )
 
 from amuse.units import units, constants, nbody_system
@@ -467,7 +468,7 @@ if __name__ == "__main__":
     if args.calculate_extinction:
         mode.append("extinction")
     if psf_type not in ["hubble", "gaussian"]:
-        print("Invalid PSF type: %s" % psf_type)
+        print(("Invalid PSF type: %s" % psf_type))
         exit()
     image_size = [pixels, pixels]
     # If the nr of pixels is changed, zoom the PSF accordingly.
@@ -480,10 +481,10 @@ if __name__ == "__main__":
                 close_file=True,
                 )
         if stellar_evolution and (age > 0 | units.Myr):
-            print(
+            print((
                     "Calculating luminosity/temperature for %s old stars..."
                     % (age)
-                    )
+                    ))
             evolve_to_age(stars, age, se=se_code)
         com = stars.center_of_mass()
         stars.position -= com
