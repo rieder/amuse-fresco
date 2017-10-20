@@ -441,7 +441,7 @@ if __name__ == "__main__":
 
     # Fixed settings
     stellar_evolution = True
-    se_code = "SSE"
+    se_code = "SeBa"
     length_unit = units.parsec
     dpi = 600
     percentile = 0.9995  # for determining vmax
