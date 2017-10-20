@@ -317,7 +317,7 @@ def column_density_map(
         mapper.stop()
         im = gaussian_filter(
                 projected,
-                sigma=psf_sigma,
+                sigma=psf_sigma*zoom_factor,
                 order=0,
                 )
     else:
@@ -331,7 +331,11 @@ def column_density_map(
                 image_size=image_size,
                 image_width=image_width,
                 )
-        im = gaussian_filter(raw_image, sigma=psf_sigma, order=0).T
+        im = gaussian_filter(
+                raw_image,
+                sigma=psf_sigma*zoom_factor,
+                order=0,
+                ).T
     if return_vmax:
         return (im, -1)
     else:
@@ -414,20 +418,21 @@ def initialise_image(
 
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=figsize, dpi=dpi)
         fig.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
+
         ax.set_xlim([xmin, xmax])
         ax.set_ylim([ymin, ymax])
-        ax.set_xlabel("[%s]" % (length_unit))
-        ax.set_ylabel("[%s]" % (length_unit))
-        ax.set_aspect(1)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['bottom'].set_visible(False)
-        ax.spines['left'].set_visible(False)
-        ax.set_facecolor('black')
     else:
         # Simply clear and re-use the old figure
         ax = fig.get_axes()[subplot]
         ax.cla()
+    ax.set_xlabel("X (%s)" % (length_unit))
+    ax.set_ylabel("Y (%s)" % (length_unit))
+    ax.set_aspect(1)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.set_facecolor('black')
     return fig
 
 
@@ -591,6 +596,7 @@ if __name__ == "__main__":
             if ("contours" in mode) and ("gas" in mode):
                 gascontours = column_density_map(
                         gas,
+                        zoom_factor=zoom_factor,
                         image_width=image_width,
                         image_size=image_size,
                         )
