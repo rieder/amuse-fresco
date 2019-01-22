@@ -7,209 +7,216 @@ lines.
 """
 
 from __future__ import (
-        print_function,
-        division,
-        absolute_import,
-        )
+    print_function,
+    division,
+    absolute_import,
+)
+
+import argparse
+
+import numpy as np
+
+from scipy.ndimage import gaussian_filter
 
 from amuse.units import units, constants, nbody_system
 from amuse.datamodel import Particles
 from amuse.io import read_set_from_file
 from amuse.datamodel.rotation import rotate
 
-from fresco.ubvinew import rgb_frame
-from fresco.fieldstars import new_field_stars
-
-from scipy.ndimage import gaussian_filter
-
-import numpy as np
 # import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-import argparse
+from fresco.ubvinew import rgb_frame
+from fresco.fieldstars import new_field_stars
 
 
 def new_argument_parser():
+    "Parse command line arguments"
     parser = argparse.ArgumentParser()
     parser.add_argument(
-            '--filetype',
-            dest='filetype',
-            default='amuse',
-            help='filetype [amuse], valid are amuse,starlab,txt,...',
-            )
+        '--filetype',
+        dest='filetype',
+        default='amuse',
+        help='filetype [amuse], valid are amuse,starlab,txt,...',
+    )
     parser.add_argument(
-            '-s',
-            dest='starsfilename',
-            default='',
-            help='file containing stars (optional) []',
-            )
+        '-s',
+        dest='starsfilename',
+        default='',
+        help='file containing stars (optional) []',
+    )
     parser.add_argument(
-            '-g',
-            dest='gasfilename',
-            default='',
-            help='file containing gas (optional) []',
-            )
+        '-g',
+        dest='gasfilename',
+        default='',
+        help='file containing gas (optional) []',
+    )
     parser.add_argument(
-            '-o',
-            dest='imagefilename',
-            default='test',
-            help='write image to this file [test]',
-            )
+        '-o',
+        dest='imagefilename',
+        default='test',
+        help='write image to this file [test]',
+    )
     parser.add_argument(
-            '--imagetype',
-            dest='imagetype',
-            default='png',
-            help='image file type [png]',
-            )
+        '--imagetype',
+        dest='imagetype',
+        default='png',
+        help='image file type [png]',
+    )
     parser.add_argument(
-            '-b',
-            dest='sourcebands',
-            default='ubvri',
-            help='colour bands to use [ubvri]',
-            )
+        '-b',
+        dest='sourcebands',
+        default='ubvri',
+        help='colour bands to use [ubvri]',
+    )
     parser.add_argument(
-            '-a',
-            dest='age',
-            default=100.,
-            type=float,
-            help='age of the stars in Myr [100]',
-            )
+        '-a',
+        dest='age',
+        default=100.,
+        type=float,
+        help='age of the stars in Myr [100]',
+    )
     parser.add_argument(
-            '-w',
-            dest='width',
-            default=5.,
-            type=float,
-            help='image width in parsec [5]',
-            )
+        '-w',
+        dest='width',
+        default=5.,
+        type=float,
+        help='image width in parsec [5]',
+    )
     parser.add_argument(
-            '-x',
-            dest='plot_axes',
-            action='store_true',
-            default=False,
-            help='plot axes [False]',
-            )
+        '-x',
+        dest='plot_axes',
+        action='store_true',
+        default=False,
+        help='plot axes [False]',
+    )
     parser.add_argument(
-            '--ext',
-            dest='calculate_extinction',
-            action='store_true',
-            default=False,
-            help='include extinction by dust [False]',
-            )
+        '--ext',
+        dest='calculate_extinction',
+        action='store_true',
+        default=False,
+        help='include extinction by dust [False]',
+    )
     parser.add_argument(
-            '--seed',
-            dest='seed',
-            default=1701,
-            type=int,
-            help='random seed',
-            )
+        '--seed',
+        dest='seed',
+        default=1701,
+        type=int,
+        help='random seed',
+    )
     parser.add_argument(
-            '--vmax',
-            dest='vmax',
-            default=0,
-            type=float,
-            help='vmax value',
-            )
+        '--vmax',
+        dest='vmax',
+        default=0,
+        type=float,
+        help='vmax value',
+    )
     parser.add_argument(
-            '--field',
-            dest='n_fieldstars',
-            default=0,
-            type=int,
-            help='add N field stars (optional) [0]',
-            )
+        '--field',
+        dest='n_fieldstars',
+        default=0,
+        type=int,
+        help='add N field stars (optional) [0]',
+    )
     parser.add_argument(
-            '--ax',
-            dest='angle_x',
-            default=0,
-            type=float,
-            help='Rotation step around x-axis in deg [0]',
-            )
+        '--ax',
+        dest='angle_x',
+        default=0,
+        type=float,
+        help='Rotation step around x-axis in deg [0]',
+    )
     parser.add_argument(
-            '--ay',
-            dest='angle_y',
-            default=0,
-            type=float,
-            help='Rotation step around y-axis in deg [0]',
-            )
+        '--ay',
+        dest='angle_y',
+        default=0,
+        type=float,
+        help='Rotation step around y-axis in deg [0]',
+    )
     parser.add_argument(
-            '--az',
-            dest='angle_z',
-            default=0,
-            type=float,
-            help='Rotation step around z-axis in deg [0]',
-            )
+        '--az',
+        dest='angle_z',
+        default=0,
+        type=float,
+        help='Rotation step around z-axis in deg [0]',
+    )
     parser.add_argument(
-            '--frames',
-            dest='frames',
-            default=1,
-            type=int,
-            help='Number of frames (>1: rotate around x,y,z) [1]',
-            )
+        '--frames',
+        dest='frames',
+        default=1,
+        type=int,
+        help='Number of frames (>1: rotate around x,y,z) [1]',
+    )
     parser.add_argument(
-            '--px',
-            dest='pixels',
-            default=2048,
-            type=int,
-            help='Number of pixels along each axis [2048]',
-            )
+        '--px',
+        dest='pixels',
+        default=2048,
+        type=int,
+        help='Number of pixels along each axis [2048]',
+    )
     parser.add_argument(
-            '--psf',
-            dest='psf_type',
-            default='hubble',
-            help='PSF type (valid: [hubble], gaussian)',
-            )
+        '--psf',
+        dest='psf_type',
+        default='hubble',
+        help='PSF type (valid: [hubble], gaussian)',
+    )
     parser.add_argument(
-            '--sigma',
-            dest='psf_sigma',
-            default=1.0,
-            type=float,
-            help='PSF sigma (if PSF type is gaussian)',
-            )
+        '--sigma',
+        dest='psf_sigma',
+        default=1.0,
+        type=float,
+        help='PSF sigma (if PSF type is gaussian)',
+    )
     parser.add_argument(
-            '--contours',
-            dest='contours',
-            action='store_true',
-            default=False,
-            help='Plot gas contour lines [False]',
-            )
+        '--contours',
+        dest='contours',
+        action='store_true',
+        default=False,
+        help='Plot gas contour lines [False]',
+    )
     return parser.parse_args()
 
 
-def evolve_to_age(stars, age, se="SeBa"):
-    if se == "SeBa":
+def evolve_to_age(stars, age, stellar_evolution="SeBa"):
+    "Evolve stars to specified age with specified code"
+    if stellar_evolution == "SeBa":
         from amuse.community.seba.interface import SeBa
-        se = SeBa()
-    elif se == "SSE":
+        stellar_evolution = SeBa()
+    elif stellar_evolution == "SSE":
         from amuse.community.sse.interface import SSE
-        se = SSE()
+        stellar_evolution = SSE()
         # SSE can result in nan values for luminosity/radius
-    se.particles.add_particles(stars)
+    else:
+        raise "No such stellar evolution code %s or no code specified" % (
+            stellar_evolution
+        )
+    stellar_evolution.particles.add_particles(stars)
     if age > 0 | units.yr:
-        se.evolve_model(age)
+        stellar_evolution.evolve_model(age)
     stars.luminosity = np.nan_to_num(
-            se.particles.luminosity.value_in(units.LSun)
-            ) | units.LSun
+        stellar_evolution.particles.luminosity.value_in(units.LSun)
+    ) | units.LSun
     # Temp fix: add one meter to radius of stars, to prevent zero/nan radius.
     # TODO: Should fix this a better way, but it's ok for now.
     stars.radius = (1 | units.m) + (np.nan_to_num(
-            se.particles.radius.value_in(units.RSun)
-            ) | units.RSun)
-    se.stop()
+        stellar_evolution.particles.radius.value_in(units.RSun)
+    ) | units.RSun)
+    stellar_evolution.stop()
     return
 
 
 def calculate_effective_temperature(luminosity, radius):
     temp = np.nan_to_num(
+        (
             (
-                (
-                    luminosity
-                    / (
-                        constants.four_pi_stefan_boltzmann
-                        * radius**2
-                        )
-                    )**.25
-                ).value_in(units.K)
-            ) | units.K
+                luminosity
+                / (
+                    constants.four_pi_stefan_boltzmann
+                    * radius**2
+                )
+            )**.25
+        ).value_in(units.K)
+    ) | units.K
     return temp
 
 
@@ -230,7 +237,7 @@ def make_image(
         psf_type="hubble",
         psf_sigma=1.0,
         return_vmax=False,
-        ):
+):
     """
     Makes image from gas and stars
     """
@@ -265,34 +272,34 @@ def make_image(
 
     if "stars" not in mode:
         image = column_density_map(
-                gas,
-                image_width=image_width,
-                image_size=image_size,
-                mapper_factory=mapper,
-                mapper_code=mapper_code,
-                zoom_factor=zoom_factor,
-                psf_type=psf_type,
-                psf_sigma=psf_sigma,
-                return_vmax=return_vmax,
-                )
+            gas,
+            image_width=image_width,
+            image_size=image_size,
+            mapper_factory=mapper,
+            mapper_code=mapper_code,
+            zoom_factor=zoom_factor,
+            psf_type=psf_type,
+            psf_sigma=psf_sigma,
+            return_vmax=return_vmax,
+        )
     else:
         image = image_from_stars(
-                stars,
-                image_width=image_width,
-                image_size=image_size,
-                percentile=percentile,
-                calc_temperature=calc_temperature,
-                age=age,
-                sourcebands=sourcebands,
-                gas=gas,
-                vmax=vmax,
-                mapper_factory=mapper,
-                mapper_code=mapper_code,
-                zoom_factor=zoom_factor,
-                psf_type=psf_type,
-                psf_sigma=psf_sigma,
-                return_vmax=return_vmax,
-                )
+            stars,
+            image_width=image_width,
+            image_size=image_size,
+            percentile=percentile,
+            calc_temperature=calc_temperature,
+            age=age,
+            sourcebands=sourcebands,
+            gas=gas,
+            vmax=vmax,
+            mapper_factory=mapper,
+            mapper_code=mapper_code,
+            zoom_factor=zoom_factor,
+            psf_type=psf_type,
+            psf_sigma=psf_sigma,
+            return_vmax=return_vmax,
+        )
     return image
 
 
@@ -306,7 +313,7 @@ def column_density_map(
         psf_type="gaussian",
         psf_sigma=10.0,
         return_vmax=False,
-        ):
+):
     if mapper_code == "FiMap":
         if callable(mapper_factory):
             mapper = mapper_factory()
@@ -316,26 +323,26 @@ def column_density_map(
         projected = mapper.image.pixel_value
         mapper.stop()
         im = gaussian_filter(
-                projected,
-                sigma=psf_sigma*zoom_factor,
-                order=0,
-                )
+            projected,
+            sigma=psf_sigma * zoom_factor,
+            order=0,
+        )
     else:
         from fresco.gridify import map_to_grid
         gas_in_mapper = gas.copy()
         gas_in_mapper.weight = gas_in_mapper.mass.value_in(units.amu)
         raw_image = map_to_grid(
-                gas_in_mapper.x,
-                gas_in_mapper.y,
-                weights=gas_in_mapper.weight,
-                image_size=image_size,
-                image_width=image_width,
-                )
+            gas_in_mapper.x,
+            gas_in_mapper.y,
+            weights=gas_in_mapper.weight,
+            image_size=image_size,
+            image_width=image_width,
+        )
         im = gaussian_filter(
-                raw_image,
-                sigma=psf_sigma*zoom_factor,
-                order=0,
-                ).T
+            raw_image,
+            sigma=psf_sigma * zoom_factor,
+            order=0,
+        ).T
     if return_vmax:
         return (im, -1)
     else:
@@ -358,31 +365,31 @@ def image_from_stars(
         psf_type="hubble",
         psf_sigma=1.0,
         return_vmax=False,
-        ):
+):
     if calc_temperature:
         # calculates the temperature of the stars from their total luminosity
         # and radius, calculates those first if needed
         stars.temperature = calculate_effective_temperature(
-                stars.luminosity,
-                stars.radius,
-                )
+            stars.luminosity,
+            stars.radius,
+        )
 
     vmax, rgb = rgb_frame(
-            stars,
-            dryrun=False,
-            image_width=image_width,
-            vmax=vmax,
-            multi_psf=False,  # True,
-            image_size=image_size,
-            percentile=percentile,
-            sourcebands=sourcebands,
-            mapper_factory=mapper_factory,
-            gas=gas,
-            mapper_code=mapper_code,
-            zoom_factor=zoom_factor,
-            psf_type=psf_type,
-            psf_sigma=psf_sigma,
-            )
+        stars,
+        dryrun=False,
+        image_width=image_width,
+        vmax=vmax,
+        multi_psf=False,  # True,
+        image_size=image_size,
+        percentile=percentile,
+        sourcebands=sourcebands,
+        mapper_factory=mapper_factory,
+        gas=gas,
+        mapper_code=mapper_code,
+        zoom_factor=zoom_factor,
+        psf_type=psf_type,
+        psf_sigma=psf_sigma,
+    )
     if return_vmax:
         return rgb['pixels'], vmax
     else:
@@ -397,7 +404,7 @@ def initialise_image(
         image_width=5 | units.parsec,
         plot_axes=True,
         subplot=0,
-        ):
+):
     if fig is None:
         if plot_axes:
             left = 0.15
@@ -436,7 +443,7 @@ def initialise_image(
     return fig
 
 
-if __name__ == "__main__":
+def main():
     mode = []
 
     # Fixed settings
@@ -464,7 +471,7 @@ if __name__ == "__main__":
     sourcebands = args.sourcebands
     psf_type = args.psf_type.lower()
     psf_sigma = args.psf_sigma
-    age = args.age | units.Myr
+    age = (0.25 * args.age) | units.Myr  # FIXME Temporary change!
     image_width = args.width | units.parsec
     pixels = args.pixels
     frames = args.frames
@@ -477,20 +484,20 @@ if __name__ == "__main__":
         exit()
     image_size = [pixels, pixels]
     # If the nr of pixels is changed, zoom the PSF accordingly.
-    zoom_factor = pixels/2048.
+    zoom_factor = pixels / 2048.
 
     if starsfilename:
         stars = read_set_from_file(
-                starsfilename,
-                filetype,
-                close_file=True,
-                )
+            starsfilename,
+            filetype,
+            close_file=True,
+        )
         if stellar_evolution and (age > 0 | units.Myr):
             print((
-                    "Calculating luminosity/temperature for %s old stars..."
-                    % (age)
-                    ))
-            evolve_to_age(stars, age, se=se_code)
+                "Calculating luminosity/temperature for %s old stars..."
+                % (age)
+            ))
+            evolve_to_age(stars, age, stellar_evolution=se_code)
         com = stars.center_of_mass()
         stars.position -= com
     else:
@@ -500,18 +507,18 @@ if __name__ == "__main__":
         minage = 400 | units.Myr
         maxage = 12 | units.Gyr
         fieldstars = new_field_stars(
-                n_fieldstars,
-                width=image_width,
-                height=image_width,
-                )
+            n_fieldstars,
+            width=image_width,
+            height=image_width,
+        )
         fieldstars.age = (
-                minage
-                + (
-                    np.random.sample(n_fieldstars)
-                    * (maxage - minage)
-                    )
-                )
-        evolve_to_age(fieldstars, 0 | units.yr, se=se_code)
+            minage
+            + (
+                np.random.sample(n_fieldstars)
+                * (maxage - minage)
+            )
+        )
+        evolve_to_age(fieldstars, 0 | units.yr, stellar_evolution=se_code)
         # TODO: add distance modulus
         stars.add_particles(fieldstars)
     if len(stars) > 0:
@@ -519,10 +526,10 @@ if __name__ == "__main__":
 
     if gasfilename:
         gas = read_set_from_file(
-                gasfilename,
-                filetype,
-                close_file=True,
-                )
+            gasfilename,
+            filetype,
+            close_file=True,
+        )
         if "stars" not in mode:
             com = gas.center_of_mass()
         gas.position -= com
@@ -539,18 +546,18 @@ if __name__ == "__main__":
     # gas.h_smooth = 0.05 | units.parsec
 
     converter = nbody_system.nbody_to_si(
-            stars.total_mass() if "stars" in mode else gas.total_mass(),
-            image_width,
-            )
+        stars.total_mass() if "stars" in mode else gas.total_mass(),
+        image_width,
+    )
 
     # Initialise figure and axes
     fig = initialise_image(
-            dpi=dpi,
-            image_size=image_size,
-            length_unit=length_unit,
-            image_width=image_width,
-            plot_axes=plot_axes,
-            )
+        dpi=dpi,
+        image_size=image_size,
+        length_unit=length_unit,
+        image_width=image_width,
+        plot_axes=plot_axes,
+    )
     ax = fig.get_axes()[0]
     xmin, xmax = ax.get_xlim()
     ymin, ymax = ax.get_ylim()
@@ -565,91 +572,95 @@ if __name__ == "__main__":
                 rotate(gas, angle_x, angle_y, angle_z)
 
         image, vmax = make_image(
-                stars,
-                gas,
-                mode=mode,
-                converter=converter,
-                image_width=image_width,
-                image_size=image_size,
-                percentile=percentile,
-                calc_temperature=True,
-                age=age,
-                vmax=vmax,
-                sourcebands=sourcebands,
-                zoom_factor=zoom_factor,
-                psf_type=psf_type,
-                psf_sigma=psf_sigma,
-                return_vmax=True,
-                )
+            stars,
+            gas,
+            mode=mode,
+            converter=converter,
+            image_width=image_width,
+            image_size=image_size,
+            percentile=percentile,
+            calc_temperature=True,
+            age=age,
+            vmax=vmax,
+            sourcebands=sourcebands,
+            zoom_factor=zoom_factor,
+            psf_type=psf_type,
+            psf_sigma=psf_sigma,
+            return_vmax=True,
+        )
 
         if "stars" in mode:
             ax.imshow(
-                    image,
-                    origin='lower',
-                    extent=[
-                        xmin,
-                        xmax,
-                        ymin,
-                        ymax,
-                        ],
-                    )
+                image,
+                origin='lower',
+                extent=[
+                    xmin,
+                    xmax,
+                    ymin,
+                    ymax,
+                ],
+            )
             if ("contours" in mode) and ("gas" in mode):
                 gascontours = column_density_map(
-                        gas,
-                        zoom_factor=zoom_factor,
-                        image_width=image_width,
-                        image_size=image_size,
-                        )
+                    gas,
+                    zoom_factor=zoom_factor,
+                    image_width=image_width,
+                    image_size=image_size,
+                )
                 gascontours[np.isnan(gascontours)] = 0.0
                 vmax = np.max(gascontours) / 2
                 # vmin = np.min(image[np.where(image > 0.0)])
                 vmin = vmax / 100
                 levels = 10**(
-                        np.linspace(
-                            np.log10(vmin),
-                            np.log10(vmax),
-                            num=5,
-                            )
-                        )[1:]
+                    np.linspace(
+                        np.log10(vmin),
+                        np.log10(vmax),
+                        num=5,
+                    )
+                )[1:]
                 # print(vmin, vmax)
                 # print(levels)
                 ax.contour(
-                        gascontours,
-                        origin='lower',
-                        levels=levels,
-                        colors="white",
-                        linewidths=0.1,
-                        extent=[
-                            xmin,
-                            xmax,
-                            ymin,
-                            ymax,
-                            ],
-                        )
-        else:
-            image = column_density_map(
-                    gas,
-                    image_width=image_width,
-                    image_size=image_size,
-                    )
-
-            ax.imshow(
-                    image,
+                    gascontours,
                     origin='lower',
+                    levels=levels,
+                    colors="white",
+                    linewidths=0.1,
                     extent=[
                         xmin,
                         xmax,
                         ymin,
                         ymax,
-                        ],
-                    cmap="gray",
-                    )
+                    ],
+                )
+        else:
+            image = column_density_map(
+                gas,
+                image_width=image_width,
+                image_size=image_size,
+            )
+
+            ax.imshow(
+                image,
+                origin='lower',
+                extent=[
+                    xmin,
+                    xmax,
+                    ymin,
+                    ymax,
+                ],
+                cmap="gray",
+            )
 
         plt.savefig(
-                "%s-%06i.%s" % (
-                    imagefilename,
-                    frame,
-                    imagetype,
-                    ),
-                dpi=dpi,
-                )
+            "%s-%06i.%s" % (
+                imagefilename,
+                frame,
+                imagetype,
+            ),
+            dpi=dpi,
+        )
+
+
+if __name__ == "__main__":
+    main()
