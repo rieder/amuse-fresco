@@ -521,7 +521,7 @@ def main():
         evolve_to_age(fieldstars, 0 | units.yr, stellar_evolution=se_code)
         # TODO: add distance modulus
         stars.add_particles(fieldstars)
-    if len(stars) > 0:
+    if not stars.is_empty():
         mode.append("stars")
 
     if gasfilename:
@@ -539,7 +539,7 @@ def main():
         gas.radius = gas.h_smooth
     else:
         gas = Particles()
-    if len(gas) > 0:
+    if not gas.is_empty():
         mode.append("gas")
         if contours:
             mode.append("contours")
@@ -566,9 +566,9 @@ def main():
         fig = initialise_image(fig)
 
         if (frame != 0) or (frames == 1):
-            if len(stars) > 0:
+            if not stars.is_empty():
                 rotate(stars, angle_x, angle_y, angle_z)
-            if len(gas) > 0:
+            if not gas.is_empty():
                 rotate(gas, angle_x, angle_y, angle_z)
 
         image, vmax = make_image(
