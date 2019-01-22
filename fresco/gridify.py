@@ -9,7 +9,7 @@ from amuse.units import units
 def map_to_grid(
         *args,
         **kwargs
-        ):
+):
     if len(args) == 2:
         return map_to_2d_grid(*args, **kwargs)
     else:
@@ -24,18 +24,18 @@ def map_to_2d_grid(
         image_width=(10 | units.parsec, 10 | units.parsec),
         periodic=False,
         mode="simple",
-        ):
+):
     """
     Returns a grid
     """
     if mode == "simple":
         return map_to_2d_grid_simple(
-                x,
-                y,
-                weights=weights,
-                image_size=image_size,
-                image_width=image_width,
-                )
+            x,
+            y,
+            weights=weights,
+            image_size=image_size,
+            image_width=image_width,
+        )
     else:
         return -1
 
@@ -46,7 +46,7 @@ def map_to_2d_grid_simple(
         weights=1,
         image_size=(2048, 2048),
         image_width=(10 | units.parsec, 10 | units.parsec),
-        ):
+):
     try:
         x_size = image_size[0]
         y_size = image_size[1]
@@ -79,17 +79,17 @@ def map_to_2d_grid_simple(
     pos_weights[2] = weight_x1 * weight_y0
     pos_weights[3] = weight_x1 * weight_y1
 
-    xbins = np.arange(1+x_size)
-    ybins = np.arange(1+y_size)
+    xbins = np.arange(1 + x_size)
+    ybins = np.arange(1 + y_size)
 
-    result = np.zeros(x_size*y_size).reshape(x_size, y_size)
+    result = np.zeros(x_size * y_size).reshape(x_size, y_size)
     for i in range(2):
         for j in range(2):
             result += np.histogram2d(
-                    x_0 + i,
-                    y_0 + j,
-                    bins=[xbins, ybins],
-                    weights=weights * pos_weights[2*i+j],
-                    )[0]
+                x_0 + i,
+                y_0 + j,
+                bins=[xbins, ybins],
+                weights=weights * pos_weights[2 * i + j],
+            )[0]
 
     return result
