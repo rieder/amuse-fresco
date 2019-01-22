@@ -196,11 +196,16 @@ def evolve_to_age(stars, age, stellar_evolution="SeBa"):
     stars.luminosity = np.nan_to_num(
         stellar_evolution.particles.luminosity.value_in(units.LSun)
     ) | units.LSun
-    # Temp fix: add one meter to radius of stars, to prevent zero/nan radius.
-    # TODO: Should fix this a better way, but it's ok for now.
-    stars.radius = (1 | units.m) + (np.nan_to_num(
-        stellar_evolution.particles.radius.value_in(units.RSun)
-    ) | units.RSun)
+
+    stars.radius = stellar_evolution.particles.radius
+    # prevent zero/nan radius.
+    x = np.where(
+        np.nan_to_num(
+            stars.radius.value_in(units.RSun)
+        ) == 0.
+    )
+    stars[x].radius = 0.01 | units.RSun
+
     stellar_evolution.stop()
     return
 
@@ -469,7 +474,7 @@ def main():
     sourcebands = args.sourcebands
     psf_type = args.psf_type.lower()
     psf_sigma = args.psf_sigma
-    age = (0.25 * args.age) | units.Myr  # FIXME Temporary change!
+    age = args.age | units.Myr
     image_width = args.width | units.parsec
     pixels = args.pixels
     frames = args.frames
@@ -517,7 +522,6 @@ def main():
             )
         )
         evolve_to_age(fieldstars, 0 | units.yr, stellar_evolution=se_code)
-        # TODO: add distance modulus
         stars.add_particles(fieldstars)
     if not stars.is_empty():
         mode.append("stars")
