@@ -12,8 +12,7 @@ def map_to_grid(
 ):
     if len(args) == 2:
         return map_to_2d_grid(*args, **kwargs)
-    else:
-        return -1
+    return -1
 
 
 def map_to_2d_grid(
@@ -36,8 +35,7 @@ def map_to_2d_grid(
             image_size=image_size,
             image_width=image_width,
         )
-    else:
-        return -1
+    return -1
 
 
 def map_to_2d_grid_simple(
