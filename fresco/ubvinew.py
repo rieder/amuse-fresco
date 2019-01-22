@@ -90,7 +90,7 @@ def assign_weights_and_opacities(
 
     mapper_stars.weight = getattr(stars, band + "_band").value_in(units.LSun)
 
-    if len(gas) == 0:
+    if gas.is_empty():
         return
 
     lambda_eff = filter_band_lambda("bess-" + band + ".pass")
