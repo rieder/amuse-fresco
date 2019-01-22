@@ -345,8 +345,7 @@ def column_density_map(
         ).T
     if return_vmax:
         return (im, -1)
-    else:
-        return im
+    return im
 
 
 def image_from_stars(
@@ -392,8 +391,7 @@ def image_from_stars(
     )
     if return_vmax:
         return rgb['pixels'], vmax
-    else:
-        return rgb['pixels']
+    return rgb['pixels']
 
 
 def initialise_image(
