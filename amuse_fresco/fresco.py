@@ -230,7 +230,10 @@ def make_image(
         gas,
         mode=["stars", "gas"],
         converter=None,
-        image_width=10. | units.parsec,
+        image_width=[
+            10. | units.parsec,
+            10. | units.parsec,
+        ],
         image_size=[1024, 1024],
         percentile=0.9995,
         age=0. | units.Myr,

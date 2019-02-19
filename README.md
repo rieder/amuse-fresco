@@ -26,7 +26,7 @@ that may be obscured by the gas/dust particles.
 - AMUSE (https://github.com/amusecode/amuse)
   - FIMap (optional, for extinction)
   - SSE or SeBa (optional, for calculating stellar luminosities and radii)
-- Astropy (or Pyfits)
+- Astropy
 
 ## Authors
 
