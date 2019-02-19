@@ -15,7 +15,7 @@ from amuse.units import units, quantities
 
 def get_filter_data(
         instrument="WFPC_II_WFC3",
-        ):
+):
     this_dir, this_filename = os.path.split(__file__)
     if this_dir == "":
         this_dir = "."
@@ -45,9 +45,9 @@ def get_filter_data(
         throughput = numpy.array(throughput)
 
         filter_data[bessellfilter] = dict(
-                wavelength=wavelength,
-                throughput=throughput,
-                )
+            wavelength=wavelength,
+            throughput=throughput,
+        )
     return filter_data
 
 
@@ -55,7 +55,7 @@ def filter_band_flux(
         fdata,
         source,
         wavelength=None,
-        ):
+):
     if fdata.__class__.__name__ == "str":
         fdata = get_filter_data()[fdata]
     if wavelength is None:
@@ -65,24 +65,25 @@ def filter_band_flux(
         xp = fdata['wavelength']
         fp = fdata['throughput']
         throughput = numpy.interp(
-                wavelength.value_in(units.angstrom),
-                xp=xp.value_in(units.angstrom),
-                fp=fp,
-                left=0.,
-                right=0.,
-                )
+            wavelength.value_in(units.angstrom),
+            xp=xp.value_in(units.angstrom),
+            fp=fp,
+            left=0.,
+            right=0.,
+        )
     src = throughput * source(wavelength)
     src = quantities.to_quantity(src)
     return numpy.trapz(
-            src.number,
-            x=wavelength.number) | (src.unit*wavelength.unit)
+        src.number,
+        x=wavelength.number,
+    ) | (src.unit*wavelength.unit)
 
 
 def filter_band_lambda(fdata):
     return (
-            filter_band_flux(fdata, lambda x: x)
-            / filter_band_flux(fdata, lambda x: 1.)
-            ).in_(units.angstrom)
+        filter_band_flux(fdata, lambda x: x)
+        / filter_band_flux(fdata, lambda x: 1.)
+    ).in_(units.angstrom)
 
 
 # def plot_filters():

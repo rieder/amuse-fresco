@@ -8,15 +8,15 @@ from __future__ import (
         division,
         )
 import numpy
+from numpy import (
+    pi, e,
+)
 
 from amuse.units import units
 from amuse.units.quantities import VectorQuantity
-from numpy import (
-        pi, e,
-        )
 from amuse.units.constants import (
-        kB, h, c,
-        )
+    kB, h, c,
+)
 from amuse.units.constants import Rydberg_constant as Ry
 from amuse.units.constants import Stefan_hyphen_Boltzmann_constant as sigma
 
