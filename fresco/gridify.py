@@ -20,7 +20,7 @@ def map_to_2d_grid(
         y,
         weights=1,
         image_size=(2048, 2048),
-        image_width=(10 | units.parsec, 10 | units.parsec),
+        image_width=10 | units.parsec,
         periodic=False,
         mode="simple",
 ):
@@ -43,7 +43,7 @@ def map_to_2d_grid_simple(
         y,
         weights=1,
         image_size=(2048, 2048),
-        image_width=(10 | units.parsec, 10 | units.parsec),
+        image_width=10 | units.parsec,
 ):
     try:
         x_size = image_size[0]
@@ -52,8 +52,8 @@ def map_to_2d_grid_simple(
         x_size = image_size
         y_size = image_size
     try:
-        x_width = image_width[0]
-        y_width = image_width[1]
+        x_width = image_width
+        y_width = image_width * (y_size / x_size)
     except TypeError:
         x_width = image_width
         y_width = image_width
