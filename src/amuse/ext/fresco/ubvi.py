@@ -13,32 +13,25 @@ import os
 import numpy
 from scipy.ndimage import zoom, gaussian_filter
 
-from amuse.datamodel import (
-    Particles,
-)
-from amuse.units import (
-    units,
-)
+from amuse.datamodel import Particles
+from amuse.units import units
 
 # import logging
 # logging.basicConfig(level=logging.DEBUG)
 
-from fresco.filters3 import (
+from amuse.ext.fresco.filters3 import (
     filter_band_flux, get_filter_data, filter_band_lambda,
 )
-from fresco.xyz import xyz_data
-from fresco.blackbody import B_lambda
-from fresco.color_converter import (
+from amuse.ext.fresco.xyz import xyz_data
+from amuse.ext.fresco.blackbody import B_lambda
+from amuse.ext.fresco.color_converter import (
     ColorConverter,
     XYZ_to_sRGB_linear, sRGB_linear_to_sRGB
 )
 
 # import time
 
-from astropy.convolution import (
-    # convolve,
-    convolve_fft,
-)
+from astropy.convolution import convolve_fft
 
 import astropy.io.fits as pyfits
 

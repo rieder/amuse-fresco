@@ -14,8 +14,8 @@ from amuse.units import units, quantities
 
 
 def get_filter_data(
-        instrument="WFPC_II_WFC3",
-        ):
+    instrument="WFPC_II_WFC3",
+):
     this_dir, this_filename = os.path.split(__file__)
     if this_dir == "":
         this_dir = "."
@@ -23,11 +23,13 @@ def get_filter_data(
 
     filter_data = dict()
 
-    bessellfilters = ["bess-u.pass",
-                      "bess-b.pass",
-                      "bess-v.pass",
-                      "bess-r.pass",
-                      "bess-i.pass"]  # Bessell 1990 filters
+    bessellfilters = [
+        "bess-u.pass",
+        "bess-b.pass",
+        "bess-v.pass",
+        "bess-r.pass",
+        "bess-i.pass",
+    ]  # Bessell 1990 filters
 
     for bessellfilter in bessellfilters:
 

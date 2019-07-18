@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Functions for calculating a black body spectrum.
+"""
+Functions for calculating a black body spectrum.
 
 """
 
@@ -8,15 +9,11 @@ from __future__ import (
         division,
         )
 import numpy
+from numpy import pi, e
 
 from amuse.units import units
 from amuse.units.quantities import VectorQuantity
-from numpy import (
-        pi, e,
-        )
-from amuse.units.constants import (
-        kB, h, c,
-        )
+from amuse.units.constants import kB, h, c
 from amuse.units.constants import Rydberg_constant as Ry
 from amuse.units.constants import Stefan_hyphen_Boltzmann_constant as sigma
 
@@ -35,21 +32,23 @@ def __B_lambda__(l, temp):
 
 def B_lambda(l, t):
     x = (
-            2 * h * c**2
-            / l**5
-            / (
-                e**(
-                    h * c
-                    / (
-                        (numpy.outer(
+        2 * h * c**2
+        / l**5
+        / (
+            e**(
+                h * c
+                / (
+                    (
+                        numpy.outer(
                             t.value_in(units.K),
                             l.value_in(units.m)
-                            ) | units.K * units.m)
-                        * kB
-                        )
-                    ) - 1
+                            ) | units.K * units.m
+                    )
+                    * kB
                 )
-            )
+            ) - 1
+        )
+    )
     return x
 
 

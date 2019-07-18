@@ -14,7 +14,7 @@ from __future__ import (
 
 import argparse
 
-import numpy as np
+import numpy
 
 from scipy.ndimage import gaussian_filter
 
@@ -27,7 +27,7 @@ from amuse.datamodel.rotation import rotate
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from amuse.ext.fresco.ubvinew import rgb_frame
+from amuse.ext.fresco.ubvi import rgb_frame
 from amuse.ext.fresco.fieldstars import new_field_stars
 
 
@@ -193,14 +193,14 @@ def evolve_to_age(stars, age, stellar_evolution="SeBa"):
     stellar_evolution.particles.add_particles(stars)
     if age > 0 | units.yr:
         stellar_evolution.evolve_model(age)
-    stars.luminosity = np.nan_to_num(
+    stars.luminosity = numpy.nan_to_num(
         stellar_evolution.particles.luminosity.value_in(units.LSun)
     ) | units.LSun
 
     stars.radius = stellar_evolution.particles.radius
     # prevent zero/nan radius.
-    x = np.where(
-        np.nan_to_num(
+    x = numpy.where(
+        numpy.nan_to_num(
             stars.radius.value_in(units.RSun)
         ) == 0.
     )
@@ -211,7 +211,7 @@ def evolve_to_age(stars, age, stellar_evolution="SeBa"):
 
 
 def calculate_effective_temperature(luminosity, radius):
-    temp = np.nan_to_num(
+    temp = numpy.nan_to_num(
         (
             (
                 luminosity
@@ -466,7 +466,7 @@ def main():
     n_fieldstars = args.n_fieldstars
     filetype = args.filetype
     contours = args.contours
-    np.random.seed(args.seed)
+    numpy.random.seed(args.seed)
     plot_axes = args.plot_axes
     angle_x = args.angle_x | units.deg
     angle_y = args.angle_y | units.deg
@@ -517,7 +517,7 @@ def main():
         fieldstars.age = (
             minage
             + (
-                np.random.sample(n_fieldstars)
+                numpy.random.sample(n_fieldstars)
                 * (maxage - minage)
             )
         )
@@ -609,14 +609,14 @@ def main():
                     image_width=image_width,
                     image_size=image_size,
                 )
-                gascontours[np.isnan(gascontours)] = 0.0
-                vmax = np.max(gascontours) / 2
-                # vmin = np.min(image[np.where(image > 0.0)])
+                gascontours[numpy.isnan(gascontours)] = 0.0
+                vmax = numpy.max(gascontours) / 2
+                # vmin = numpy.min(image[numpy.where(image > 0.0)])
                 vmin = vmax / 100
                 levels = 10**(
-                    np.linspace(
-                        np.log10(vmin),
-                        np.log10(vmax),
+                    numpy.linspace(
+                        numpy.log10(vmin),
+                        numpy.log10(vmax),
                         num=5,
                     )
                 )[1:]
