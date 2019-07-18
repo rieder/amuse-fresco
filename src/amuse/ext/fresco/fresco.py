@@ -27,8 +27,8 @@ from amuse.datamodel.rotation import rotate
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from fresco.ubvinew import rgb_frame
-from fresco.fieldstars import new_field_stars
+from amuse.ext.fresco.ubvinew import rgb_frame
+from amuse.ext.fresco.fieldstars import new_field_stars
 
 
 def new_argument_parser():
