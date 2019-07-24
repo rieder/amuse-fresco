@@ -52,8 +52,8 @@ def map_to_2d_grid_simple(
         x_size = image_size
         y_size = image_size
     try:
-        x_width = image_width[0]
-        y_width = image_width[1]
+        x_width = image_width
+        y_width = image_width
     except TypeError:
         x_width = image_width
         y_width = image_width

@@ -27,8 +27,8 @@ from amuse.datamodel.rotation import rotate
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from amuse_fresco.ubvinew import rgb_frame
-from amuse_fresco.fieldstars import new_field_stars
+from amuse.ext.fresco.ubvi import rgb_frame
+from amuse.ext.fresco.fieldstars import new_field_stars
 
 
 def new_argument_parser():
@@ -174,6 +174,34 @@ def new_argument_parser():
         default=False,
         help='Plot gas contour lines [False]',
     )
+    parser.add_argument(
+        '--com',
+        dest='use_com',
+        action='store_true',
+        default=False,
+        help='Center on center of mass [False]',
+    )
+    parser.add_argument(
+        '--xo',
+        dest='x_offset',
+        default=0.0,
+        type=float,
+        help='X offset (in parsec)',
+    )
+    parser.add_argument(
+        '--yo',
+        dest='y_offset',
+        default=0.0,
+        type=float,
+        help='Y offset (in parsec)',
+    )
+    parser.add_argument(
+        '--zo',
+        dest='z_offset',
+        default=0.0,
+        type=float,
+        help='Z offset (in parsec)',
+    )
     return parser.parse_args()
 
 
@@ -226,9 +254,8 @@ def calculate_effective_temperature(luminosity, radius):
 
 
 def make_image(
-        stars,
-        gas,
-        mode=["stars", "gas"],
+        stars=None,
+        gas=None,
         converter=None,
         image_width=[
             10. | units.parsec,
@@ -244,12 +271,21 @@ def make_image(
         zoom_factor=1.0,
         psf_type="hubble",
         psf_sigma=1.0,
+        extinction=False,
         return_vmax=False,
 ):
     """
     Makes image from gas and stars
     """
-    if ("extinction" in mode):
+    mode=[],
+    if gas is not None:
+        mode.append("gas")
+    if stars is not None:
+        mode.append("stars")
+    if mode == []:
+        return
+
+    if extinction:
         # Extinction can currently only be handled with FiMap
         mapper_code = "FiMap"
 
@@ -270,8 +306,7 @@ def make_image(
             # mapper.parameters.projection_mode = projection
             # mapper.parameters.image_angle = horizontal_angle
             # mapper.parameters.viewpoint = viewpoint
-            mapper.parameters.extinction_flag =\
-                True if "extinction" in mode else False
+            mapper.parameters.extinction_flag = extinction
             return mapper
     else:
         # Gridify as default
@@ -410,6 +445,9 @@ def initialise_image(
         image_width=5 | units.parsec,
         plot_axes=True,
         subplot=0,
+        x_offset=0 | units.parsec,
+        y_offset=0 | units.parsec,
+        z_offset=0 | units.parsec,
 ):
     if fig is None:
         if plot_axes:
@@ -424,10 +462,10 @@ def initialise_image(
         figheight = image_size[1] / dpi / (top - bottom)
         figsize = (figwidth, figheight)
 
-        xmin = -0.5 * image_width.value_in(length_unit)
-        xmax = 0.5 * image_width.value_in(length_unit)
-        ymin = -0.5 * image_width.value_in(length_unit)
-        ymax = 0.5 * image_width.value_in(length_unit)
+        xmin = x_offset.value_in(length_unit) - 0.5 * image_width.value_in(length_unit)
+        xmax = x_offset.value_in(length_unit) + 0.5 * image_width.value_in(length_unit)
+        ymin = y_offset.value_in(length_unit) - 0.5 * image_width.value_in(length_unit)
+        ymax = y_offset.value_in(length_unit) + 0.5 * image_width.value_in(length_unit)
 
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=figsize, dpi=dpi)
         fig.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
@@ -450,8 +488,6 @@ def initialise_image(
 
 
 def main():
-    mode = []
-
     # Fixed settings
     stellar_evolution = True
     se_code = "SeBa"
@@ -481,10 +517,14 @@ def main():
     image_width = args.width | units.parsec
     pixels = args.pixels
     frames = args.frames
+    use_com = args.use_com
+    x_offset = args.x_offset | units.parsec
+    y_offset = args.y_offset | units.parsec
+    z_offset = args.z_offset | units.parsec
 
     # Derived settings
     if args.calculate_extinction:
-        mode.append("extinction")
+        extinction = True
     if psf_type not in ["hubble", "gaussian"]:
         print(("Invalid PSF type: %s" % psf_type))
         exit()
@@ -504,8 +544,13 @@ def main():
                 % (age)
             ))
             evolve_to_age(stars, age, stellar_evolution=se_code)
-        com = stars.center_of_mass()
-        stars.position -= com
+        if use_com:
+            com = stars.center_of_mass()
+            stars.position -= com
+        else:
+            stars.x -= x_offset
+            stars.y -= y_offset
+            stars.z -= z_offset
     else:
         stars = Particles()
 
@@ -526,8 +571,6 @@ def main():
         )
         evolve_to_age(fieldstars, 0 | units.yr, stellar_evolution=se_code)
         stars.add_particles(fieldstars)
-    if not stars.is_empty():
-        mode.append("stars")
 
     if gasfilename:
         gas = read_set_from_file(
@@ -535,23 +578,24 @@ def main():
             filetype,
             close_file=True,
         )
-        if "stars" not in mode:
-            com = gas.center_of_mass()
-        gas.position -= com
+        if use_com:
+            if not stars.is_empty():
+                com = gas.center_of_mass()
+            gas.position -= com
+        else:
+            gas.x -= x_offset
+            gas.y -= y_offset
+            gas.z -= z_offset
         # Gadget and Fi disagree on the definition of h_smooth.
         # For gadget, need to divide by 2 to get the Fi value (??)
         gas.h_smooth *= 0.5
         gas.radius = gas.h_smooth
     else:
         gas = Particles()
-    if not gas.is_empty():
-        mode.append("gas")
-        if contours:
-            mode.append("contours")
     # gas.h_smooth = 0.05 | units.parsec
 
     converter = nbody_system.nbody_to_si(
-        stars.total_mass() if "stars" in mode else gas.total_mass(),
+        stars.total_mass() if not stars.is_empty() else gas.total_mass(),
         image_width,
     )
 
@@ -562,6 +606,9 @@ def main():
         length_unit=length_unit,
         image_width=image_width,
         plot_axes=plot_axes,
+        x_offset=x_offset,
+        y_offset=y_offset,
+        z_offset=z_offset,
     )
     ax = fig.get_axes()[0]
     xmin, xmax = ax.get_xlim()
@@ -577,9 +624,8 @@ def main():
                 rotate(gas, angle_x, angle_y, angle_z)
 
         image, vmax = make_image(
-            stars,
-            gas,
-            mode=mode,
+            stars=stars,
+            gas=gas,
             converter=converter,
             image_width=image_width,
             image_size=image_size,
@@ -592,9 +638,10 @@ def main():
             psf_type=psf_type,
             psf_sigma=psf_sigma,
             return_vmax=True,
+            extinction=extinction,
         )
 
-        if "stars" in mode:
+        if not stars.is_empty():
             ax.imshow(
                 image,
                 origin='lower',
@@ -605,7 +652,7 @@ def main():
                     ymax,
                 ],
             )
-            if ("contours" in mode) and ("gas" in mode):
+            if contours and not gas.is_empty():
                 gascontours = column_density_map(
                     gas,
                     zoom_factor=zoom_factor,
@@ -626,7 +673,6 @@ def main():
                 # print(vmin, vmax)
                 # print(levels)
                 ax.contour(
-                    gascontours,
                     origin='lower',
                     levels=levels,
                     colors="white",

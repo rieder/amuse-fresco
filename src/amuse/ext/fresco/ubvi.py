@@ -26,12 +26,12 @@ from amuse.units import units
 # import logging
 # logging.basicConfig(level=logging.DEBUG)
 
-from amuse_fresco.filters3 import (
+from amuse.ext.fresco.filters import (
     filter_band_flux, get_filter_data, filter_band_lambda,
 )
-from amuse_fresco.xyz import xyz_data
-from amuse_fresco.blackbody import B_lambda
-from amuse_fresco.color_converter import (
+from amuse.ext.fresco.xyz import xyz_data
+from amuse.ext.fresco.blackbody import B_lambda
+from amuse.ext.fresco.color_converter import (
     ColorConverter,
     XYZ_to_sRGB_linear, sRGB_linear_to_sRGB
 )
@@ -189,7 +189,7 @@ def rgb_frame(
         mapper.stop()
     else:
         # Use simpler python mapping script
-        from .gridify import map_to_grid
+        from gridify import map_to_grid
         stars_in_mapper = stars.copy()
         gas_in_mapper = gas.copy()
         raw_images = dict()
