@@ -27,23 +27,23 @@ that may be obscured by the gas/dust particles.
   - FIMap (optional, for extinction)
   - SSE or SeBa (optional, for calculating stellar luminosities and radii)
 - Astropy
-- amuse_masc (recommended)
+- amuse-masc (recommended)
 
 ## Usage
     import matplotlib.pyplot as plt
     from amuse.datamodel import Particles
     from amuse.units import units, nbody_system
     from amuse.community.sse.interface import SSE
-    from amuse_masc import make_a_star_cluster
-    from amuse_fresco import fresco
-    ?fresco.make_image  # See options
+    from amuse.ext.masc import make_a_star_cluster
+    from amuse.ext.fresco import make_fresco_image
+    ?make_fresco_image  # See options
     stars = make_a_star_cluster.new_cluster()
     gas = Particles()
     se = SSE()
     se.particles.add_particles(stars)
     from_se = se.particles.new_channel_to(stars)
     from_se.copy()
-    image, vmax = fresco.make_image(
+    image, vmax = make_fresco_image(
         stars, gas,
         mode=["stars"],
         return_vmax=True,
