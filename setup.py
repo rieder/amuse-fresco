@@ -39,9 +39,14 @@ long_description_content_type = "text/markdown"
 
 extensions = []
 
-all_data_files = []
+all_data_files = [
+]
 
 packages = ['amuse.ext.fresco']
+
+package_dir = {
+    'amuse.ext.fresco': 'src/amuse/ext/fresco'
+}
 
 package_data = {
 }
@@ -59,9 +64,10 @@ setup(
     long_description_content_type=long_description_content_type,
     install_requires=install_requires,
     ext_modules=extensions,
-    package_dir={'amuse.ext.fresco': 'src/amuse/ext/fresco'},
+    package_dir=package_dir,
     packages=packages,
     package_data=package_data,
     data_files=all_data_files,
+    include_package_data=True,
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
 )
