@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/67827407.svg)](https://zenodo.org/badge/latestdoi/67827407)
 # Fresco
 Fresco aims to simulate observations of particle-based simulations, such as
 those of a star cluster. It creates an observation-like image from a list of
