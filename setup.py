@@ -1,6 +1,6 @@
 from setuptools import setup
 
-version = "0.3.1"
+version = "0.5.0"
 name = 'amuse-fresco'
 author = 'Steven Rieder and Inti Pelupessy'
 author_email = 'steven@rieder.nl'
