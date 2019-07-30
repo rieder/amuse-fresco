@@ -1,0 +1,2 @@
+[build-system]
+requires = [ "amuse-framework>=12.0", "scipy", "astropy", "matplotlib" ]
