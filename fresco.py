@@ -318,6 +318,21 @@ def main():
         # For gadget, need to divide by 2 to get the Fi value (??)
         gas.h_smooth *= 0.5
         gas.radius = gas.h_smooth
+
+        # Select only the relevant gas particles (plus a margin)
+        minx = (1.1 * -image_width/2)
+        maxx = (1.1 * image_width/2)
+        miny = (1.1 * -image_width/2)
+        maxy = (1.1 * image_width/2)
+        gas_ = gas.select(
+            lambda x, y:
+            x > minx
+            and x < maxx
+            and y > miny
+            and y < maxy,
+            ["x", "y"]
+        )
+        gas = gas_
     else:
         gas = Particles()
     # gas.h_smooth = 0.05 | units.parsec
