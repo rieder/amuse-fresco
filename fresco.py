@@ -18,26 +18,20 @@ import argparse
 
 import numpy as np
 
-from scipy.ndimage import gaussian_filter
-
-from amuse.units import units, constants, nbody_system
-from amuse.datamodel import Particles
-from amuse.io import read_set_from_file
-from amuse.datamodel.rotation import rotate
-
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from amuse.ext.fresco.ubvi import rgb_frame
-from amuse.ext.fresco.fieldstars import new_field_stars
+from amuse.units import units, nbody_system
+from amuse.datamodel import Particles
+from amuse.io import read_set_from_file
+from amuse.datamodel.rotation import rotate
 
+from amuse.ext.fresco.fieldstars import new_field_stars
 from amuse.ext.fresco.fresco import (
     evolve_to_age,
-    calculate_effective_temperature,
     make_image,
     column_density_map,
-    image_from_stars,
     initialise_image,
 )
 
@@ -64,9 +58,15 @@ def new_argument_parser():
         help='file containing gas (optional) []',
     )
     parser.add_argument(
+        '-f',
+        dest='followfilename',
+        default='',
+        help='file containing star keys to center on (optional) []',
+    )
+    parser.add_argument(
         '-o',
         dest='imagefilename',
-        default='test',
+        default=None,
         help='write image to this file [test]',
     )
     parser.add_argument(
@@ -228,6 +228,7 @@ def main():
     args = new_argument_parser()
     starsfilename = args.starsfilename
     gasfilename = args.gasfilename
+    followfilename = args.followfilename
     imagefilename = args.imagefilename
     imagetype = args.imagetype
     vmax = args.vmax if args.vmax > 0 else None
@@ -273,12 +274,20 @@ def main():
             ))
             evolve_to_age(stars, age, stellar_evolution=se_code)
         if use_com:
-            com = stars.center_of_mass()
-            stars.position -= com
-        else:
-            stars.x -= x_offset
-            stars.y -= y_offset
-            stars.z -= z_offset
+            if followfilename is not None:
+                followstars = read_set_from_file(
+                    followfilename, filetype, close_file=True,
+                )
+                center_on_these_stars = followstars.get_intersecting_subset_in(
+                    stars,
+                )
+            else:
+                center_on_these_stars = stars
+            com = center_on_these_stars.center_of_mass()
+            x_offset, y_offset, z_offset = com
+        stars.x -= x_offset
+        stars.y -= y_offset
+        stars.z -= z_offset
     else:
         stars = Particles()
 
@@ -309,11 +318,10 @@ def main():
         if use_com:
             if not stars.is_empty():
                 com = gas.center_of_mass()
-            gas.position -= com
-        else:
-            gas.x -= x_offset
-            gas.y -= y_offset
-            gas.z -= z_offset
+                x_offset, y_offset, z_offset = com
+        gas.x -= x_offset
+        gas.y -= y_offset
+        gas.z -= z_offset
         # Gadget and Fi disagree on the definition of h_smooth.
         # For gadget, need to divide by 2 to get the Fi value (??)
         gas.h_smooth *= 0.5
@@ -446,12 +454,19 @@ def main():
                 cmap="gray",
             )
 
-        plt.savefig(
-            "%s-%06i.%s" % (
-                imagefilename,
+        if frames > 1:
+            savefilename = "%s-%06i.%s" % (
+                imagefilename if imagefilename is not None else "test",
                 frame,
                 imagetype,
-            ),
+            )
+        else:
+            savefilename = "%s.%s" % (
+                imagefilename if imagefilename is not None else "test",
+                imagetype,
+            )
+        plt.savefig(
+            savefilename,
             dpi=dpi,
         )
 

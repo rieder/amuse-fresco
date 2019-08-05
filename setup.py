@@ -1,6 +1,6 @@
 from setuptools import setup
 
-version = "0.5.1"
+version = "0.5.2"
 name = 'amuse-fresco'
 author = 'Steven Rieder and Inti Pelupessy'
 author_email = 'steven@rieder.nl'
@@ -31,6 +31,9 @@ classifiers=[
 install_requires = [
     'wheel>=0.32',
     'amuse-framework>=12.0.0',
+    'scipy',
+    'matplotlib',
+    'astropy',
 ]
 description = 'Make a realistic visualisation of a star cluster'
 with open("README.md", "r") as fh:
