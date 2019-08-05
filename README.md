@@ -23,6 +23,7 @@ that may be obscured by the gas/dust particles.
 
 - Python 2.7 (3.x experimental)
 - Numpy
+- Scipy
 - Matplotlib
 - AMUSE (https://github.com/amusecode/amuse)
   - FIMap (optional, for extinction)
