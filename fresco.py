@@ -60,8 +60,10 @@ def new_argument_parser():
     parser.add_argument(
         '-f',
         dest='followfilename',
-        default='',
-        help='file containing star keys to center on (optional) []',
+        default=None,
+        help=\
+        'file containing star keys to center on (optional) []\n'
+        '  best used with --com',
     )
     parser.add_argument(
         '-o',
