@@ -1,6 +1,6 @@
 from setuptools import setup
 
-version = "0.5.2"
+version = "0.5.5"
 name = 'amuse-fresco'
 author = 'Steven Rieder and Inti Pelupessy'
 author_email = 'steven@rieder.nl'
@@ -21,7 +21,7 @@ classifiers=[
     # OS support
     "Operating System :: OS Independent",
 
-    # Maturity of amuse_masc
+    # Maturity of amuse-fresco
     "Development Status :: 4 - Beta",
 
     # Intended audience
