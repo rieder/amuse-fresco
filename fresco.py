@@ -318,7 +318,7 @@ def main():
             close_file=True,
         )
         if use_com:
-            if not stars.is_empty():
+            if stars.is_empty():
                 com = gas.center_of_mass()
                 x_offset, y_offset, z_offset = com
         gas.x -= x_offset
