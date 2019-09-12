@@ -274,7 +274,7 @@ def rgb_frame(
         flat_sorted = numpy.sort(srgb_l.flatten())
         n = len(flat_sorted)
         vmax = flat_sorted[int(1. - 3 * (1. - percentile) * n)]
-        print(("vmax:", vmax))
+        print("vmax: %f" % vmax)
     if dryrun:
         return vmax
 

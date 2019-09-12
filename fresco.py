@@ -475,3 +475,32 @@ def main():
 
 if __name__ == "__main__":
     main()
+    print(
+        "------------------\n"
+        "\n"
+        "Fresco is built on the tools below."
+        " If you use Fresco for your publication, please cite the following"
+        " references:\n"
+        "\n"
+        "Fresco:"
+        " Steven Rieder & Inti Pelupessy."
+        " rieder/Fresco (2019)."
+        " doi:10.5281/zenodo.3362342\n"
+        "AMUSE:"
+        " Simon Portegies Zwart & Steve McMillan."
+        " Astrophysical Recipes; The art of AMUSE (2019)."
+        " ADS bibcode: 2018araa.book.....P."
+        " doi:10.1088/978-0-7503-1320-9\n"
+        "Matplotlib:"
+        " John D. Hunter."
+        " Matplotlib: A 2D Graphics Environment."
+        " doi:10.1109/MCSE.2007.55\n"
+        "Numpy:"
+        " Stéfan van der Walt, S. Chris Colbert and Gaël Varoquaux."
+        " The NumPy Array: A Structure for Efficient Numerical Computation."
+        " doi:10.1109/MCSE.2011.37\n"
+        "Python:"
+        " Guido van Rossum."
+        " Extending and Embedding the Python Interpreter."
+        " May 1995. CWI Report CS-R9527.\n"
+    )

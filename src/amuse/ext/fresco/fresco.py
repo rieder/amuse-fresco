@@ -273,8 +273,8 @@ def initialise_image(
 ):
     if fig is None:
         if plot_axes:
-            left = 0.15
-            bottom = 0.15
+            left = 0.2
+            bottom = 0.2
         else:
             left = 0.
             bottom = 0.
