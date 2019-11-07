@@ -189,7 +189,7 @@ def rgb_frame(
         mapper.stop()
     else:
         # Use simpler python mapping script
-        from gridify import map_to_grid
+        from amuse.ext.fresco.gridify import map_to_grid
         stars_in_mapper = stars.copy()
         gas_in_mapper = gas.copy()
         raw_images = dict()
