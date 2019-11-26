@@ -63,7 +63,7 @@ def new_argument_parser():
         default=None,
         help=\
         'file containing star keys to center on (optional) []\n'
-        '  best used with --com',
+        '  implies --com',
     )
     parser.add_argument(
         '-o',
@@ -249,7 +249,10 @@ def main():
     image_width = args.width | units.parsec
     pixels = args.pixels
     frames = args.frames
-    use_com = args.use_com
+    if followfilename is not None:
+        use_com = True
+    else:
+        use_com = args.use_com
     x_offset = args.x_offset | units.parsec
     y_offset = args.y_offset | units.parsec
     z_offset = args.z_offset | units.parsec
