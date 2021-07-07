@@ -27,8 +27,8 @@ from amuse.datamodel import Particles
 from amuse.io import read_set_from_file
 from amuse.datamodel.rotation import rotate
 
-from amuse.ext.fresco.fieldstars import new_field_stars
-from amuse.ext.fresco.fresco import (
+from amuse.plot.fresco.fieldstars import new_field_stars
+from amuse.plot.fresco.fresco import (
     evolve_to_age,
     make_image,
     column_density_map,

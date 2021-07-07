@@ -1,6 +1,6 @@
 from setuptools import setup
 
-version = "0.6.0"
+version = "0.7.0"
 name = 'amuse-fresco'
 author = 'Steven Rieder and Inti Pelupessy'
 author_email = 'steven@rieder.nl'
@@ -30,7 +30,7 @@ classifiers=[
 
 install_requires = [
     'wheel>=0.32',
-    'amuse-framework>=13.0.0',
+    'amuse-framework>=2021.7.0',
     'scipy',
     'matplotlib',
     'astropy',
@@ -45,10 +45,10 @@ extensions = []
 all_data_files = [
 ]
 
-packages = ['amuse.ext.fresco']
+packages = ['amuse.plot.fresco']
 
 package_dir = {
-    'amuse.ext.fresco': 'src/amuse/ext/fresco'
+    'amuse.plot.fresco': 'src/amuse/plot/fresco'
 }
 
 package_data = {

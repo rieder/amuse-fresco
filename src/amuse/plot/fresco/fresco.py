@@ -76,6 +76,7 @@ def calculate_effective_temperature(luminosity, radius):
 
 
 def make_image(
+        maps=None,
         stars=None,
         gas=None,
         converter=None,
