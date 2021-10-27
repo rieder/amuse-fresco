@@ -21,13 +21,13 @@ that may be obscured by the gas/dust particles.
 
 ## Requirements
 
-- Python 2.7 (3.x experimental)
+- Python 3.6 or higher
 - Numpy
 - Scipy
 - Matplotlib
 - AMUSE (https://github.com/amusecode/amuse)
-  - FIMap (optional, for extinction)
-  - SSE or SeBa (optional, for calculating stellar luminosities and radii)
+  - a stellar evolution code (e.g. SSE or SeBa, for calculating stellar luminosities and radii)
+  - optional: Fi (for calculating dust extinction)
 - Astropy
 - amuse-masc (recommended)
 
