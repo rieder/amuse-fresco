@@ -23,8 +23,8 @@ from amuse.datamodel.rotation import rotate
 
 import matplotlib.pyplot as plt
 
-from amuse.ext.fresco.ubvi import rgb_frame
-from amuse.ext.fresco.fieldstars import new_field_stars
+from .ubvi import rgb_frame
+from .fieldstars import new_field_stars
 
 
 def evolve_to_age(stars, age, stellar_evolution="SeBa"):

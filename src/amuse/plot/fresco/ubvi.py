@@ -26,12 +26,12 @@ from amuse.units import units
 # import logging
 # logging.basicConfig(level=logging.DEBUG)
 
-from amuse.ext.fresco.filters import (
+from .filters import (
     filter_band_flux, get_filter_data, filter_band_lambda,
 )
-from amuse.ext.fresco.xyz import xyz_data
-from amuse.ext.fresco.blackbody import B_lambda
-from amuse.ext.fresco.color_converter import (
+from .xyz import xyz_data
+from .blackbody import B_lambda
+from .color_converter import (
     ColorConverter,
     XYZ_to_sRGB_linear, sRGB_linear_to_sRGB
 )
@@ -138,7 +138,7 @@ def rgb_frame(
         zoom_factor=1.0,
         psf_type="hubble",
         psf_sigma=1.0,
-        verbose=True,
+        verbose=False,
 ):
 
     if gas is None:
@@ -189,7 +189,7 @@ def rgb_frame(
         mapper.stop()
     else:
         # Use simpler python mapping script
-        from amuse.ext.fresco.gridify import map_to_grid
+        from .gridify import map_to_grid
         stars_in_mapper = stars.copy()
         gas_in_mapper = gas.copy()
         raw_images = dict()
@@ -274,7 +274,8 @@ def rgb_frame(
         flat_sorted = numpy.sort(srgb_l.flatten())
         n = len(flat_sorted)
         vmax = flat_sorted[int(1. - 3 * (1. - percentile) * n)]
-        print("vmax: %f" % vmax)
+        if verbose:
+            print("vmax: %f" % vmax)
     if dryrun:
         return vmax
 

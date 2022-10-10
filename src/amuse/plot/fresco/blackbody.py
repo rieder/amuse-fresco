@@ -13,7 +13,6 @@ from numpy import (
 )
 
 from amuse.units import units
-from amuse.units.quantities import VectorQuantity
 from amuse.units.constants import (
     kB, h, c,
 )
@@ -25,31 +24,23 @@ def B_nu(nu, t):
     return 2*h*nu**3/c**2 * 1. / (e**(h*nu/kB/t)-1)
 
 
-def __B_lambda__(l, temp):
-    tmp = VectorQuantity([], 1e+50 * units.m**-1 * units.kg * units.s**-3)
-    for t in temp:
-        curr = 2*h*c**2/l**5*1./(e**(h*c/(l*kB*t))-1)
-        tmp.append(curr)
-    return tmp
-
-
-def B_lambda(l, t):
+def B_lambda(wavelength, temperature):
     x = (
-            2 * h * c**2
-            / l**5
-            / (
-                e**(
-                    h * c
-                    / (
-                        (numpy.outer(
-                            t.value_in(units.K),
-                            l.value_in(units.m)
-                            ) | units.K * units.m)
-                        * kB
-                        )
-                    ) - 1
-                )
+        2 * h * c**2
+        / wavelength**5
+        / (
+            e**(
+                h * c
+                / (
+                    (numpy.outer(
+                        temperature.value_in(units.K),
+                        wavelength.value_in(units.m)
+                        ) | units.K * units.m)
+                    * kB
+                    )
+                ) - 1
             )
+        )
     return x
 
 
@@ -69,8 +60,8 @@ def wavelength(nu):
     return c/nu
 
 
-def freq_from_wavelength(l):
-    return c/l
+def freq_from_wavelength(wavelength):
+    return c/wavelength
 
 
 def wiens_lambda_max(T):
@@ -78,9 +69,9 @@ def wiens_lambda_max(T):
     return b/T
 
 
-def wiens_T_from_lambda_max(l):
+def wiens_T_from_lambda_max(wavelength):
     b = 2897768.6 | units.nano(units.m) * units.K
-    return b/l
+    return b/wavelength
 
 
 def energy_flux(T, lowfreq=0. | units.s**-1, N=1000):

@@ -1,6 +1,6 @@
 import numpy
 
-from amuse.ext.fresco.blackbody import B_lambda
+from .blackbody import B_lambda
 
 from amuse.units import (
     units,
