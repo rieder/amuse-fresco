@@ -6,25 +6,11 @@ reflecting and/or obscuring light). Gas may also be displayed with contour
 lines.
 """
 
-from __future__ import (
-    print_function,
-    division,
-    absolute_import,
-)
-
 import numpy as np
-
 from scipy.ndimage import gaussian_filter
-
-from amuse.units import units, constants, nbody_system
-from amuse.datamodel import Particles
-from amuse.io import read_set_from_file
-from amuse.datamodel.rotation import rotate
-
+from amuse.units import units, constants
 import matplotlib.pyplot as plt
-
 from .ubvi import rgb_frame
-from .fieldstars import new_field_stars
 
 
 def evolve_to_age(stars, age, stellar_evolution="SeBa"):
