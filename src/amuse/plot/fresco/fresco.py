@@ -7,10 +7,11 @@ lines.
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
 from amuse.units import units, constants
-import matplotlib.pyplot as plt
 from .ubvi import rgb_frame
+from .gridify import map_to_grid
 
 
 def evolve_to_age(stars, age, stellar_evolution="SeBa"):
@@ -23,9 +24,11 @@ def evolve_to_age(stars, age, stellar_evolution="SeBa"):
         stellar_evolution = SSE()
         # SSE can result in nan values for luminosity/radius
     else:
-        raise "No such stellar evolution code %s or no code specified" % (
-            stellar_evolution
+        raise (
+            f"No such stellar evolution code {stellar_evolution} or no code "
+            f"specified"
         )
+
     stellar_evolution.particles.add_particles(stars)
     if age > 0 | units.yr:
         stellar_evolution.evolve_model(age)
@@ -35,12 +38,12 @@ def evolve_to_age(stars, age, stellar_evolution="SeBa"):
 
     stars.radius = stellar_evolution.particles.radius
     # prevent zero/nan radius.
-    x = np.where(
+    location_of_nan_radius = np.where(
         np.nan_to_num(
             stars.radius.value_in(units.RSun)
         ) == 0.
     )
-    stars[x].radius = 0.01 | units.RSun
+    stars[location_of_nan_radius].radius = 0.01 | units.RSun
 
     stellar_evolution.stop()
     return
@@ -62,36 +65,37 @@ def calculate_effective_temperature(luminosity, radius):
 
 
 def make_image(
-        maps=None,
-        stars=None,
-        gas=None,
-        converter=None,
-        image_width=[
-            10. | units.parsec,
-            10. | units.parsec,
-        ],
-        image_size=[1024, 1024],
-        percentile=0.9995,
-        age=0. | units.Myr,
-        sourcebands="ubvri",
-        vmax=None,
-        calc_temperature=True,
-        mapper_code=None,  # "FiMap"
-        zoom_factor=1.0,
-        psf_type="hubble",
-        psf_sigma=1.0,
-        extinction=False,
-        return_vmax=False,
+    maps=None,
+    stars=None,
+    gas=None,
+    converter=None,
+    image_width=[
+        10. | units.parsec,
+        10. | units.parsec,
+    ],
+    image_size=[1024, 1024],
+    percentile=0.9995,
+    age=0. | units.Myr,
+    sourcebands="ubvri",
+    vmax=None,
+    calc_temperature=True,
+    mapper_code=None,  # "FiMap"
+    zoom_factor=1.0,
+    psf_type="hubble",
+    psf_file=None,
+    psf_sigma=1.0,
+    extinction=False,
+    return_vmax=False,
 ):
     """
     Makes image from gas and stars
     """
-    mode=[]
+    mode = []
     if gas is not None:
         mode.append("gas")
     if stars is not None:
         mode.append("stars")
-    if mode == []:
+    if not mode:
         return
 
     if extinction:
@@ -149,6 +153,7 @@ def make_image(
             mapper_code=mapper_code,
             zoom_factor=zoom_factor,
             psf_type=psf_type,
+            psf_file=psf_file,
             psf_sigma=psf_sigma,
             return_vmax=return_vmax,
         )
@@ -180,7 +185,6 @@ def column_density_map(
             order=0,
         )
     else:
-        from amuse.ext.fresco.gridify import map_to_grid
         gas_in_mapper = gas.copy()
         gas_in_mapper.weight = gas_in_mapper.mass.value_in(units.amu)
         raw_image = map_to_grid(
@@ -201,21 +205,22 @@ def column_density_map(
 
 
 def image_from_stars(
-        stars,
-        image_width=10. | units.parsec,
-        image_size=[1024, 1024],
-        percentile=0.9995,
-        calc_temperature=True,
-        age=0. | units.Myr,
-        sourcebands="ubvri",
-        gas=None,
-        vmax=None,
-        mapper_factory=None,
-        mapper_code=None,
-        zoom_factor=1.0,
-        psf_type="hubble",
-        psf_sigma=1.0,
-        return_vmax=False,
+    stars,
+    image_width=10. | units.parsec,
+    image_size=[1024, 1024],
+    percentile=0.9995,
+    calc_temperature=True,
+    age=0. | units.Myr,
+    sourcebands="ubvri",
+    gas=None,
+    vmax=None,
+    mapper_factory=None,
+    mapper_code=None,
+    zoom_factor=1.0,
+    psf_type="hubble",
+    psf_file=None,
+    psf_sigma=1.0,
+    return_vmax=False,
 ):
     if calc_temperature:
         # calculates the temperature of the stars from their total luminosity
@@ -239,6 +244,7 @@ def image_from_stars(
         mapper_code=mapper_code,
         zoom_factor=zoom_factor,
         psf_type=psf_type,
+        psf_file=psf_file,
         psf_sigma=psf_sigma,
     )
     if return_vmax:

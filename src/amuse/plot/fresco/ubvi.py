@@ -46,8 +46,8 @@ def Convolve(
 
 
 def get_psf(
-        instrument="WFPC_II_WFC3",
-        zoom_factor=1.0,
+    instrument="WFPC_II_WFC3",
+    zoom_factor=1.0,
 ):
     psf = dict()
     this_dir = os.path.split(__file__)[0]
@@ -58,7 +58,8 @@ def get_psf(
 
     for band in "ubvri":
         for i in range(4):
-            f = pyfits.open(datadir + band + "%2.2i.fits" % i)
+            psf_filename = datadir + band + "%2.2i.fits" % i
+            f = pyfits.open(psf_filename)
             if zoom_factor != 1.0:
                 psf[band + str(i)] = zoom(
                     numpy.array(f[0].data),
@@ -71,15 +72,15 @@ def get_psf(
 
 
 def assign_weights_and_opacities(
-        band,
-        mapper_stars,
-        mapper_gas,
-        stars,
-        gas,
-        dust_to_gas=0.01,
-        dust_extinction_cross_section_v_band=4.9e-22 | units.cm**2,
-        dust_albedo_v_band=.01,
-        Nstar=50,
+    band,
+    mapper_stars,
+    mapper_gas,
+    stars,
+    gas,
+    dust_to_gas=0.01,
+    dust_extinction_cross_section_v_band=4.9e-22 | units.cm**2,
+    dust_albedo_v_band=.01,
+    Nstar=50,  # number of stars to use for reflected light on gas/dust
 ):
 
     mapper_stars.weight = getattr(stars, band + "_band").value_in(units.LSun)
@@ -124,21 +125,22 @@ def assign_weights_and_opacities(
 
 
 def rgb_frame(
-        stars,
-        dryrun=False,
-        vmax=None,
-        percentile=0.9995,
-        multi_psf=False,
-        sourcebands="ubvri",
-        image_width=12. | units.parsec,
-        image_size=[1024, 1024],
-        mapper_factory=None,
-        gas=None,
-        mapper_code=None,
-        zoom_factor=1.0,
-        psf_type="hubble",
-        psf_sigma=1.0,
-        verbose=False,
+    stars,
+    dryrun=False,
+    vmax=None,
+    percentile=0.9995,
+    multi_psf=False,
+    sourcebands="ubvri",
+    image_width=12. | units.parsec,
+    image_size=[1024, 1024],
+    mapper_factory=None,
+    gas=None,
+    mapper_code=None,
+    zoom_factor=1.0,
+    psf_type="hubble",
+    psf_file=None,
+    psf_sigma=1.0,
+    verbose=False,
 ):
 
     if gas is None:
@@ -148,15 +150,19 @@ def rgb_frame(
         print("luminosities..")
 
     for band in sourcebands:
-        setattr(
+        if not hasattr(
             stars,
-            band + "_band",
-            4 * numpy.pi * stars.radius**2 *
-            filter_band_flux(
-                "bess-" + band + ".pass",
-                lambda x: B_lambda(x, stars.temperature),
-            ),
-        )
+            band + "_band"
+        ):
+            setattr(
+                stars,
+                band + "_band",
+                4 * numpy.pi * stars.radius**2 *
+                filter_band_flux(
+                    "bess-" + band + ".pass",
+                    lambda x: B_lambda(x, stars.temperature),
+                ),
+            )
     if verbose:
         print("..raw images..")
 
@@ -220,7 +226,13 @@ def rgb_frame(
     if verbose:
         print("..convolving..")
 
-    if psf_type == "hubble":
+    if psf_type == "file":
+        print(f"PSF: {psf_file}")
+        with pyfits.open(psf_file) as psf:
+            for key, val in list(raw_images.items()):
+                im1 = Convolve(val, psf[0].data)
+                convolved_images[key] = im1
+    elif psf_type == "hubble":
         psf = get_psf(zoom_factor=zoom_factor)
         if multi_psf:
             a = numpy.arange(image_size[0]) / float(image_size[0] - 1)

@@ -8,12 +8,7 @@ reflecting and/or obscuring light). Gas may also be displayed with contour
 lines.
 """
 
-from __future__ import (
-    print_function,
-    division,
-    absolute_import,
-)
-
+import os
 import argparse
 
 import numpy as np
@@ -38,78 +33,79 @@ from amuse.plot.fresco.fresco import (
 
 def new_argument_parser():
     "Parse command line arguments"
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument(
         '--filetype',
         dest='filetype',
         default='amuse',
-        help='filetype [amuse], valid are amuse,starlab,txt,...',
+        help='file type, valid are all types AMUSE can read (amuse,starlab,txt,...)',
     )
     parser.add_argument(
         '-s',
         dest='starsfilename',
         default='',
-        help='file containing stars (optional) []',
+        help='file containing stars (optional)',
     )
     parser.add_argument(
         '-g',
         dest='gasfilename',
         default='',
-        help='file containing gas (optional) []',
+        help='file containing gas (optional)',
     )
     parser.add_argument(
         '-f',
         dest='followfilename',
         default=None,
         help=\
-        'file containing star keys to center on (optional) []\n'
-        '  implies --com',
+        'file containing star keys to center on (optional, implies --com)',
     )
     parser.add_argument(
         '-o',
         dest='imagefilename',
         default=None,
-        help='write image to this file [test]',
+        help='write image to this file',
     )
     parser.add_argument(
         '--imagetype',
         dest='imagetype',
         default='png',
-        help='image file type [png]',
+        help='image file type',
     )
     parser.add_argument(
         '-b',
         dest='sourcebands',
         default='ubvri',
-        help='colour bands to use [ubvri]',
+        help='colour bands to use',
     )
     parser.add_argument(
         '-a',
         dest='age',
         default=100.,
         type=float,
-        help='age of the stars in Myr [100]',
+        help='age of the stars in Myr',
     )
     parser.add_argument(
         '-w',
         dest='width',
         default=5.,
         type=float,
-        help='image width in parsec [5]',
+        help='image width in parsec',
     )
     parser.add_argument(
         '-x',
         dest='plot_axes',
         action='store_true',
         default=False,
-        help='plot axes [False]',
+        help='plot axes',
     )
     parser.add_argument(
         '--ext',
         dest='calculate_extinction',
         action='store_true',
         default=False,
-        help='include extinction by dust [False]',
+        help='include extinction by dust',
     )
     parser.add_argument(
         '--seed',
@@ -130,48 +126,51 @@ def new_argument_parser():
         dest='n_fieldstars',
         default=0,
         type=int,
-        help='add N field stars (optional) [0]',
+        help='add N field stars (optional)',
     )
     parser.add_argument(
         '--ax',
         dest='angle_x',
         default=0,
         type=float,
-        help='Rotation step around x-axis in deg [0]',
+        help='Rotation step around x-axis in deg',
     )
     parser.add_argument(
         '--ay',
         dest='angle_y',
         default=0,
         type=float,
-        help='Rotation step around y-axis in deg [0]',
+        help='Rotation step around y-axis in deg',
     )
     parser.add_argument(
         '--az',
         dest='angle_z',
         default=0,
         type=float,
-        help='Rotation step around z-axis in deg [0]',
+        help='Rotation step around z-axis in deg',
     )
     parser.add_argument(
         '--frames',
         dest='frames',
         default=1,
         type=int,
-        help='Number of frames (>1: rotate around x,y,z) [1]',
+        help='Number of frames (>1: rotate around x,y,z)',
     )
     parser.add_argument(
         '--px',
         dest='pixels',
         default=2048,
         type=int,
-        help='Number of pixels along each axis [2048]',
+        help='Number of pixels along each axis',
     )
     parser.add_argument(
         '--psf',
         dest='psf_type',
         default='hubble',
-        help='PSF type (valid: [hubble], gaussian)',
+        help=(
+            'PSF type. Looks for a .fits file of the given name, uses this if it exists.\n'
+            'Otherwise, "hubble", "wfc3", "wfpc2" and "gaussian" are valid options.'
+        )
     )
     parser.add_argument(
         '--sigma',
@@ -181,18 +180,25 @@ def new_argument_parser():
         help='PSF sigma (if PSF type is gaussian)',
     )
     parser.add_argument(
+        '--fl',
+        dest='fixed_luminosity',
+        action='store_true',
+        default=False,
+        help='Use a fixed, equal luminosity and temperature for all stars',
+    )
+    parser.add_argument(
         '--contours',
         dest='contours',
         action='store_true',
         default=False,
-        help='Plot gas contour lines [False]',
+        help='Plot gas contour lines',
     )
     parser.add_argument(
         '--com',
         dest='use_com',
         action='store_true',
         default=False,
-        help='Center on center of mass [False]',
+        help='Center on center of mass',
     )
     parser.add_argument(
         '--xo',
@@ -219,7 +225,7 @@ def new_argument_parser():
 
 
 def main():
-    # Fixed settings
+    # Standard settings
     stellar_evolution = True
     se_code = "SeBa"
     length_unit = units.parsec
@@ -228,6 +234,8 @@ def main():
 
     # Parse arguments
     args = new_argument_parser()
+    if args.fixed_luminosity:
+        stellar_evolution = False
     starsfilename = args.starsfilename
     gasfilename = args.gasfilename
     followfilename = args.followfilename
@@ -243,7 +251,16 @@ def main():
     angle_y = args.angle_y | units.deg
     angle_z = args.angle_z | units.deg
     sourcebands = args.sourcebands
-    psf_type = args.psf_type.lower()
+    psf_type = args.psf_type
+    if os.path.exists(psf_type):
+        psf_file = psf_type
+        psf_type = "file"
+    else:
+        psf_file = None
+        psf_type = psf_type.lower()
+        if psf_type not in ["hubble", "gaussian"]:
+            print(f"Invalid PSF type or file does not exist: {psf_type}")
+            exit()
     psf_sigma = args.psf_sigma
     age = args.age | units.Myr
     image_width = args.width | units.parsec
@@ -259,9 +276,7 @@ def main():
     extinction = args.calculate_extinction
 
     # Derived settings
-    if psf_type not in ["hubble", "gaussian"]:
-        print(("Invalid PSF type: %s" % psf_type))
-        exit()
+
     image_size = [pixels, pixels]
     # If the nr of pixels is changed, zoom the PSF accordingly.
     zoom_factor = pixels / 2048.
@@ -278,6 +293,9 @@ def main():
                 % (age)
             ))
             evolve_to_age(stars, age, stellar_evolution=se_code)
+        elif args.fixed_luminosity:
+            for band in sourcebands:
+                setattr(stars, band + "_band", 1.0 | units.LSun)
         if use_com:
             if followfilename is not None:
                 followstars = read_set_from_file(
@@ -293,6 +311,18 @@ def main():
         stars.x -= x_offset
         stars.y -= y_offset
         stars.z -= z_offset
+
+        # Select only the relevant gas particles (plus a margin)
+        # note: the margin should at least be half the PSF width - probably
+        # more
+        minx = (1.5 * -image_width/2)
+        maxx = (1.5 * image_width/2)
+        miny = (1.5 * -image_width/2)
+        maxy = (1.5 * image_width/2)
+        stars = stars[stars.x > minx]
+        stars = stars[stars.x < maxx]
+        stars = stars[stars.y > miny]
+        stars = stars[stars.y < maxy]
     else:
         stars = Particles()
 
@@ -329,8 +359,8 @@ def main():
         gas.z -= z_offset
         # Gadget and Fi disagree on the definition of h_smooth.
         # For gadget, need to divide by 2 to get the Fi value (??)
-        gas.h_smooth *= 0.5
-        gas.radius = gas.h_smooth
+        # gas.h_smooth *= 0.5
+        # gas.radius = gas.h_smooth
 
         # Select only the relevant gas particles (plus a margin)
         minx = (1.1 * -image_width/2)
@@ -386,16 +416,18 @@ def main():
             image_width=image_width,
             image_size=image_size,
             percentile=percentile,
-            calc_temperature=True,
+            calc_temperature=False,
             age=age,
             vmax=vmax,
             sourcebands=sourcebands,
             zoom_factor=zoom_factor,
             psf_type=psf_type,
+            psf_file=psf_file,
             psf_sigma=psf_sigma,
             return_vmax=True,
             extinction=extinction,
         )
+        print(f"vmax = {vmax}")
 
         if not stars.is_empty():
             ax.imshow(
