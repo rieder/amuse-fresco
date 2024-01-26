@@ -31,40 +31,38 @@ from amuse.plot.fresco.fresco import (
 )
 
 
-def new_argument_parser():
+def fresco_argument_parser(parser=None):
     "Parse command line arguments"
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
+    if parser is None:
+        parser = argparse.ArgumentParser(
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        )
     parser.add_argument(
         '--filetype',
         dest='filetype',
         default='amuse',
-        help='file type, valid are all types AMUSE can read (amuse,starlab,txt,...)',
+        help='file type, valid are all types AMUSE can read',
     )
     parser.add_argument(
         '-s',
         dest='starsfilename',
-        default='',
         help='file containing stars (optional)',
     )
     parser.add_argument(
         '-g',
         dest='gasfilename',
-        default='',
         help='file containing gas (optional)',
     )
     parser.add_argument(
         '-f',
         dest='followfilename',
-        default=None,
-        help=\
-        'file containing star keys to center on (optional, implies --com)',
+        help=(
+            'file containing star keys to center on (optional, implies --com)'
+        ),
     )
     parser.add_argument(
         '-o',
         dest='imagefilename',
-        default=None,
         help='write image to this file',
     )
     parser.add_argument(
@@ -82,16 +80,16 @@ def new_argument_parser():
     parser.add_argument(
         '-a',
         dest='age',
-        default=100.,
-        type=float,
-        help='age of the stars in Myr',
+        default=100 | units.Myr,
+        type=units.Myr,
+        help='age of the stars',
     )
     parser.add_argument(
         '-w',
         dest='width',
-        default=5.,
-        type=float,
-        help='image width in parsec',
+        default=5 | units.pc,
+        type=units.pc,
+        help='image width',
     )
     parser.add_argument(
         '-x',
@@ -131,23 +129,23 @@ def new_argument_parser():
     parser.add_argument(
         '--ax',
         dest='angle_x',
-        default=0,
-        type=float,
-        help='Rotation step around x-axis in deg',
+        default=0 | units.deg,
+        type=units.deg,
+        help='Rotation step around x-axis',
     )
     parser.add_argument(
         '--ay',
         dest='angle_y',
-        default=0,
-        type=float,
-        help='Rotation step around y-axis in deg',
+        default=0 | units.deg,
+        type=units.deg,
+        help='Rotation step around y-axis',
     )
     parser.add_argument(
         '--az',
         dest='angle_z',
-        default=0,
-        type=float,
-        help='Rotation step around z-axis in deg',
+        default=0 | units.deg,
+        type=units.deg,
+        help='Rotation step around z-axis',
     )
     parser.add_argument(
         '--frames',
@@ -168,8 +166,10 @@ def new_argument_parser():
         dest='psf_type',
         default='hubble',
         help=(
-            'PSF type. Looks for a .fits file of the given name, uses this if it exists.\n'
-            'Otherwise, "hubble", "wfc3", "wfpc2" and "gaussian" are valid options.'
+            'PSF type. Looks for a .fits file of the given name, uses this if '
+            'it exists.\n'
+            'Otherwise, "hubble", "wfc3", "wfpc2" and "gaussian" are valid '
+            'options.'
         )
     )
     parser.add_argument(
@@ -203,23 +203,23 @@ def new_argument_parser():
     parser.add_argument(
         '--xo',
         dest='x_offset',
-        default=0.0,
-        type=float,
-        help='X offset (in parsec)',
+        default=0.0 | units.pc,
+        type=units.pc,
+        help='X offset',
     )
     parser.add_argument(
         '--yo',
         dest='y_offset',
-        default=0.0,
-        type=float,
-        help='Y offset (in parsec)',
+        default=0.0 | units.pc,
+        type=units.pc,
+        help='Y offset',
     )
     parser.add_argument(
         '--zo',
         dest='z_offset',
-        default=0.0,
-        type=float,
-        help='Z offset (in parsec)',
+        default=0.0 | units.pc,
+        type=units.pc,
+        help='Z offset',
     )
     return parser.parse_args()
 
@@ -233,7 +233,7 @@ def main():
     percentile = 0.9995  # for determining vmax
 
     # Parse arguments
-    args = new_argument_parser()
+    args = fresco_argument_parser()
     if args.fixed_luminosity:
         stellar_evolution = False
     starsfilename = args.starsfilename
@@ -247,9 +247,9 @@ def main():
     contours = args.contours
     np.random.seed(args.seed)
     plot_axes = args.plot_axes
-    angle_x = args.angle_x | units.deg
-    angle_y = args.angle_y | units.deg
-    angle_z = args.angle_z | units.deg
+    angle_x = args.angle_x
+    angle_y = args.angle_y
+    angle_z = args.angle_z
     sourcebands = args.sourcebands
     psf_type = args.psf_type
     if os.path.exists(psf_type):
@@ -262,17 +262,17 @@ def main():
             print(f"Invalid PSF type or file does not exist: {psf_type}")
             exit()
     psf_sigma = args.psf_sigma
-    age = args.age | units.Myr
-    image_width = args.width | units.parsec
+    age = args.age
+    image_width = args.width
     pixels = args.pixels
     frames = args.frames
     if followfilename is not None:
         use_com = True
     else:
         use_com = args.use_com
-    x_offset = args.x_offset | units.parsec
-    y_offset = args.y_offset | units.parsec
-    z_offset = args.z_offset | units.parsec
+    x_offset = args.x_offset
+    y_offset = args.y_offset
+    z_offset = args.z_offset
     extinction = args.calculate_extinction
 
     # Derived settings
@@ -308,13 +308,21 @@ def main():
                 center_on_these_stars = stars
             com = center_on_these_stars.center_of_mass()
             x_offset, y_offset, z_offset = com
-        stars.x -= x_offset
-        stars.y -= y_offset
-        stars.z -= z_offset
 
         # Select only the relevant gas particles (plus a margin)
         # note: the margin should at least be half the PSF width - probably
         # more
+        if image_width == "max" | units.pc:
+            minx = stars.x.min()
+            maxx = stars.x.max()
+            miny = stars.y.min()
+            maxy = stars.y.max()
+            image_width = max(maxx-minx, maxy-miny)
+            x_offset = (maxx+minx) / 2
+            y_offset = (maxy+miny) / 2
+        stars.x -= x_offset
+        stars.y -= y_offset
+        stars.z -= z_offset
         minx = (1.5 * -image_width/2)
         maxx = (1.5 * image_width/2)
         miny = (1.5 * -image_width/2)
@@ -400,7 +408,18 @@ def main():
     xmin, xmax = ax.get_xlim()
     ymin, ymax = ax.get_ylim()
 
+    if not stars.is_empty():
+        rotate(stars, (frames-1)*angle_x, (frames-1)*angle_y, (frames-1)*angle_z)
+    if not gas.is_empty():
+        rotate(gas, (frames-1)*angle_x, (frames-1)*angle_y, (frames-1)*angle_z)
     for frame in range(frames):
+        frame += frames
+        print(
+            f"frame {frame}, "
+            f"angle: {frame * angle_x.value_in(units.deg)} "
+            f"{frame * angle_y.value_in(units.deg)} "
+            f"{frame * angle_z.value_in(units.deg)}"
+        )
         fig = initialise_image(fig)
 
         if (frame != 0) or (frames == 1):
