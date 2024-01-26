@@ -21,10 +21,7 @@ bessellfilters = {
 }  # Bessell 1990 filters
 
 
-def get_filter_data(
-    instrument="WFPC_II_WFC3",
-    filters=bessellfilters
-):
+def get_filter_data(instrument="WFPC_II_WFC3", filters=bessellfilters):
     this_dir, this_filename = os.path.split(__file__)
     if this_dir == "":
         this_dir = "."
@@ -51,37 +48,36 @@ def get_filter_data(
 
 
 def filter_band_flux(
-        fdata,
-        source,
-        wavelength=None,
+    fdata,
+    source,
+    wavelength=None,
 ):
     if fdata.__class__.__name__ == "str":
         fdata = get_filter_data()[fdata]
     if wavelength is None:
-        wavelength = fdata['wavelength']
-        throughput = fdata['throughput']
+        wavelength = fdata["wavelength"]
+        throughput = fdata["throughput"]
     else:
-        xp = fdata['wavelength']
-        fp = fdata['throughput']
+        xp = fdata["wavelength"]
+        fp = fdata["throughput"]
         throughput = numpy.interp(
             wavelength.value_in(units.angstrom),
             xp=xp.value_in(units.angstrom),
             fp=fp,
-            left=0.,
-            right=0.,
+            left=0.0,
+            right=0.0,
         )
     src = throughput * source(wavelength)
     src = quantities.to_quantity(src)
     return numpy.trapz(
         src.number,
         x=wavelength.number,
-    ) | (src.unit*wavelength.unit)
+    ) | (src.unit * wavelength.unit)
 
 
 def filter_band_lambda(fdata):
     return (
-        filter_band_flux(fdata, lambda x: x)
-        / filter_band_flux(fdata, lambda x: 1.)
+        filter_band_flux(fdata, lambda x: x) / filter_band_flux(fdata, lambda x: 1.0)
     ).in_(units.angstrom)
 
 
@@ -97,53 +93,46 @@ def plot_filters(
 
     n = 1000
     for band in filters:
-        wavelength = (
-            min_wavelength + (max_wavelength-min_wavelength)
-            * (
-                numpy.array(range(n+1))
-                / n
-            )
+        wavelength = min_wavelength + (max_wavelength - min_wavelength) * (
+            numpy.array(range(n + 1)) / n
         )
-        xp = filter_data[filters[band]]['wavelength']
-        fp = filter_data[filters[band]]['throughput']
+        xp = filter_data[filters[band]]["wavelength"]
+        fp = filter_data[filters[band]]["throughput"]
         f = numpy.interp(
             wavelength.value_in(wavelength_unit),
             xp=xp.value_in(wavelength_unit),
             fp=fp,
-            left=0.,
-            right=0.,
+            left=0.0,
+            right=0.0,
         )
 
         ax.plot(wavelength.value_in(wavelength_unit), f)
-        ax.set_xlabel(f'wavelength ({wavelength_unit})')
-        ax.set_ylabel('transmission')
-        
+        ax.set_xlabel(f"wavelength ({wavelength_unit})")
+        ax.set_ylabel("transmission")
 
     plt.show()
 
 
 if __name__ == "__main__":
-
     plot_filters(filters=bessellfilters)
 
-    T = 5000. | units.K
+    T = 5000.0 | units.K
 
     fb = filter_band_flux(
-            filter_data["bess-u.pass"],
-            lambda x: B_lambda(x, T),
-            ).in_(units.W/units.m**2)
+        filter_data["bess-u.pass"],
+        lambda x: B_lambda(x, T),
+    ).in_(units.W / units.m**2)
 
     print(fb)
     print(
-        (
-            fb * (1. | units.RSun)**2
-            / (1. | units.AU)**2
-        ).in_(units.W/units.m**2)
+        (fb * (1.0 | units.RSun) ** 2 / (1.0 | units.AU) ** 2).in_(
+            units.W / units.m**2
+        )
     )
     print(
         (
-            energy_flux2(5778. | units.K)
-            * (1. | units.RSun)**2
-            / (1. | units.AU)**2
-        ).in_(units.W/units.m**2)
+            energy_flux2(5778.0 | units.K)
+            * (1.0 | units.RSun) ** 2
+            / (1.0 | units.AU) ** 2
+        ).in_(units.W / units.m**2)
     )

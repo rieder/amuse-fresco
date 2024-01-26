@@ -6,23 +6,20 @@ import numpy as np
 from amuse.units import units
 
 
-def map_to_grid(
-        *args,
-        **kwargs
-):
+def map_to_grid(*args, **kwargs):
     if len(args) == 2:
         return map_to_2d_grid(*args, **kwargs)
     return -1
 
 
 def map_to_2d_grid(
-        x,
-        y,
-        weights=1,
-        image_size=(2048, 2048),
-        image_width=10 | units.parsec,
-        periodic=False,
-        mode="simple",
+    x,
+    y,
+    weights=1,
+    image_size=(2048, 2048),
+    image_width=10 | units.parsec,
+    periodic=False,
+    mode="simple",
 ):
     """
     Returns a grid
@@ -39,11 +36,11 @@ def map_to_2d_grid(
 
 
 def map_to_2d_grid_simple(
-        x,
-        y,
-        weights=1,
-        image_size=(2048, 2048),
-        image_width=10 | units.parsec,
+    x,
+    y,
+    weights=1,
+    image_size=(2048, 2048),
+    image_width=10 | units.parsec,
 ):
     try:
         x_size = image_size[0]
@@ -67,10 +64,10 @@ def map_to_2d_grid_simple(
     y_0 = np.floor(y_px)
     x_1 = x_0 + 1
     y_1 = y_0 + 1
-    weight_x0 = (x_1 - x_px)
-    weight_y0 = (y_1 - y_px)
-    weight_x1 = (x_px - x_0)
-    weight_y1 = (y_px - y_0)
+    weight_x0 = x_1 - x_px
+    weight_y0 = y_1 - y_px
+    weight_x1 = x_px - x_0
+    weight_y1 = y_px - y_0
     pos_weights = [0, 0, 0, 0]
     pos_weights[0] = weight_x0 * weight_y0
     pos_weights[1] = weight_x0 * weight_y1

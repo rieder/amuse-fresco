@@ -18,9 +18,11 @@ def evolve_to_age(stars, age, stellar_evolution="SeBa"):
     "Evolve stars to specified age with specified code"
     if stellar_evolution == "SeBa":
         from amuse.community.seba.interface import SeBa
+
         stellar_evolution = SeBa()
     elif stellar_evolution == "SSE":
         from amuse.community.sse.interface import SSE
+
         stellar_evolution = SSE()
         # SSE can result in nan values for luminosity/radius
     else:
@@ -32,16 +34,15 @@ def evolve_to_age(stars, age, stellar_evolution="SeBa"):
     stellar_evolution.particles.add_particles(stars)
     if age > 0 | units.yr:
         stellar_evolution.evolve_model(age)
-    stars.luminosity = np.nan_to_num(
-        stellar_evolution.particles.luminosity.value_in(units.LSun)
-    ) | units.LSun
+    stars.luminosity = (
+        np.nan_to_num(stellar_evolution.particles.luminosity.value_in(units.LSun))
+        | units.LSun
+    )
 
     stars.radius = stellar_evolution.particles.radius
     # prevent zero/nan radius.
     location_of_nan_radius = np.where(
-        np.nan_to_num(
-            stars.radius.value_in(units.RSun)
-        ) == 0.
+        np.nan_to_num(stars.radius.value_in(units.RSun)) == 0.0
     )
     stars[location_of_nan_radius].radius = 0.01 | units.RSun
 
@@ -50,17 +51,15 @@ def evolve_to_age(stars, age, stellar_evolution="SeBa"):
 
 
 def calculate_effective_temperature(luminosity, radius):
-    temp = np.nan_to_num(
-        (
+    temp = (
+        np.nan_to_num(
             (
-                luminosity
-                / (
-                    constants.four_pi_stefan_boltzmann
-                    * radius**2
-                )
-            )**.25
-        ).value_in(units.K)
-    ) | units.K
+                (luminosity / (constants.four_pi_stefan_boltzmann * radius**2))
+                ** 0.25
+            ).value_in(units.K)
+        )
+        | units.K
+    )
     return temp
 
 
@@ -69,13 +68,12 @@ def make_image(
     stars=None,
     gas=None,
     converter=None,
-    image_width=[
-        10. | units.parsec,
-        10. | units.parsec,
-    ],
+    image_width=10.0 | units.parsec,
+    image_height=None,
+    padding_fraction=0.1,
     image_size=[1024, 1024],
     percentile=0.9995,
-    age=0. | units.Myr,
+    age=0.0 | units.Myr,
     sourcebands="ubvri",
     vmax=None,
     calc_temperature=True,
@@ -86,13 +84,33 @@ def make_image(
     psf_sigma=1.0,
     extinction=False,
     return_vmax=False,
+    origin=[0, 0, 0] | units.pc,
+    visualisation_mode="visual",
 ):
     """
     Makes image from gas and stars
     """
+    if image_height is None:
+        image_height = image_width
     mode = []
     if gas is not None:
         mode.append("gas")
+        # Only keep the relevant gas
+        gas_all = gas
+        x_lower = origin[0] - (padding_fraction + 0.5) * image_width
+        x_upper = origin[0] + (padding_fraction + 0.5) * image_width
+        y_lower = origin[1] - (padding_fraction + 0.5) * image_height
+        y_upper = origin[1] + (padding_fraction + 0.5) * image_height
+        gas_relevant_indices = (
+            (gas_all.x >= x_lower)
+            & (gas_all.x <= x_upper)
+            & (gas_all.y >= y_lower)
+            & (gas_all.y <= y_upper)
+        )
+        gas = gas_all[gas_relevant_indices]
+        gas.x -= origin[0]
+        gas.y -= origin[1]
+        gas.z -= origin[2]
     if stars is not None:
         mode.append("stars")
     if not mode:
@@ -103,8 +121,10 @@ def make_image(
         mapper_code = "FiMap"
 
     if mapper_code == "FiMap":
+
         def mapper():
             from amuse.community.fi.interface import FiMap
+
             mapper = FiMap(converter, mode="openmp")
 
             # mapper.parameters.minimum_distance = 1. | units.AU
@@ -121,6 +141,7 @@ def make_image(
             # mapper.parameters.viewpoint = viewpoint
             mapper.parameters.extinction_flag = extinction
             return mapper
+
     else:
         # Gridify as default
         mapper = None
@@ -139,6 +160,7 @@ def make_image(
             return_vmax=return_vmax,
         )
     else:
+        print("vmax: ", vmax)
         image = image_from_stars(
             stars,
             image_width=image_width,
@@ -156,20 +178,21 @@ def make_image(
             psf_file=psf_file,
             psf_sigma=psf_sigma,
             return_vmax=return_vmax,
+            visualisation_mode=visualisation_mode,
         )
     return image
 
 
 def column_density_map(
-        gas,
-        image_width=10. | units.parsec,
-        image_size=[1024, 1024],
-        mapper_factory=None,
-        mapper_code=None,
-        zoom_factor=1.0,
-        psf_type="gaussian",
-        psf_sigma=10.0,
-        return_vmax=False,
+    gas,
+    image_width=10.0 | units.parsec,
+    image_size=[1024, 1024],
+    mapper_factory=None,
+    mapper_code=None,
+    zoom_factor=1.0,
+    psf_type="gaussian",
+    psf_sigma=10.0,
+    return_vmax=False,
 ):
     if mapper_code == "FiMap":
         if callable(mapper_factory):
@@ -206,11 +229,11 @@ def column_density_map(
 
 def image_from_stars(
     stars,
-    image_width=10. | units.parsec,
+    image_width=10.0 | units.parsec,
     image_size=[1024, 1024],
     percentile=0.9995,
     calc_temperature=True,
-    age=0. | units.Myr,
+    age=0.0 | units.Myr,
     sourcebands="ubvri",
     gas=None,
     vmax=None,
@@ -221,6 +244,7 @@ def image_from_stars(
     psf_file=None,
     psf_sigma=1.0,
     return_vmax=False,
+    visualisation_mode="visual",
 ):
     if calc_temperature:
         # calculates the temperature of the stars from their total luminosity
@@ -246,31 +270,32 @@ def image_from_stars(
         psf_type=psf_type,
         psf_file=psf_file,
         psf_sigma=psf_sigma,
+        visualisation_mode=visualisation_mode,
     )
     if return_vmax:
-        return rgb['pixels'], vmax
-    return rgb['pixels']
+        return rgb["pixels"], vmax
+    return rgb["pixels"]
 
 
 def initialise_image(
-        fig=None,
-        dpi=150,
-        image_size=[2048, 2048],
-        length_unit=units.parsec,
-        image_width=5 | units.parsec,
-        plot_axes=True,
-        subplot=0,
-        x_offset=0 | units.parsec,
-        y_offset=0 | units.parsec,
-        z_offset=0 | units.parsec,
+    fig=None,
+    dpi=150,
+    image_size=[2048, 2048],
+    length_unit=units.parsec,
+    image_width=5 | units.parsec,
+    plot_axes=True,
+    subplot=0,
+    x_offset=0 | units.parsec,
+    y_offset=0 | units.parsec,
+    z_offset=0 | units.parsec,
 ):
     if fig is None:
         if plot_axes:
             left = 0.2
             bottom = 0.2
         else:
-            left = 0.
-            bottom = 0.
+            left = 0.0
+            bottom = 0.0
         right = 1.0
         top = 1.0
         figwidth = image_size[0] / dpi / (right - left)
@@ -294,9 +319,9 @@ def initialise_image(
     ax.set_xlabel("X (%s)" % (length_unit))
     ax.set_ylabel("Y (%s)" % (length_unit))
     ax.set_aspect(1)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['left'].set_visible(False)
-    ax.set_facecolor('black')
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["bottom"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    ax.set_facecolor("black")
     return fig
