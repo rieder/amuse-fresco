@@ -435,7 +435,7 @@ def main():
             image_width=image_width,
             image_size=image_size,
             percentile=percentile,
-            calc_temperature=False,
+            calc_temperature=False if not hasattr(stars, "temperature") else True,
             age=age,
             vmax=vmax,
             sourcebands=sourcebands,

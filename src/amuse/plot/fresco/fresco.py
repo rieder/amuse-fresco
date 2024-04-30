@@ -14,16 +14,16 @@ from .ubvi import rgb_frame
 from .gridify import map_to_grid
 
 
-def evolve_to_age(stars, age, stellar_evolution="SeBa"):
+def evolve_to_age(stars, age, stellar_evolution="seba"):
     "Evolve stars to specified age with specified code"
-    if stellar_evolution == "SeBa":
-        from amuse.community.seba.interface import SeBa
+    if stellar_evolution.lower() == "seba":
+        from amuse.community.seba import Seba
 
-        stellar_evolution = SeBa()
-    elif stellar_evolution == "SSE":
-        from amuse.community.sse.interface import SSE
+        stellar_evolution = Seba()
+    elif stellar_evolution.lower() == "sse":
+        from amuse.community.sse import Sse
 
-        stellar_evolution = SSE()
+        stellar_evolution = Sse()
         # SSE can result in nan values for luminosity/radius
     else:
         raise (
@@ -246,6 +246,8 @@ def image_from_stars(
     return_vmax=False,
     visualisation_mode="visual",
 ):
+    if not hasattr(stars, "temperature"):
+        calc_temperature = True
     if calc_temperature:
         # calculates the temperature of the stars from their total luminosity
         # and radius, calculates those first if needed
