@@ -21,7 +21,7 @@ that may be obscured by the gas/dust particles.
 
 ## Requirements
 
--   Python 3.6 or higher
+-   Python 3.7 or higher
 -   Numpy
 -   Scipy
 -   Matplotlib
@@ -35,13 +35,13 @@ that may be obscured by the gas/dust particles.
     import matplotlib.pyplot as plt
     from amuse.datamodel import Particles
     from amuse.units import units, nbody_system
-    from amuse.community.sse.interface import SSE
+    from amuse.community.sse import Sse
     from amuse.ext.masc import make_a_star_cluster
-    from amuse.ext.fresco import make_fresco_image
+    from amuse.plot.fresco import make_fresco_image
     ?make_fresco_image  # See options
     stars = make_a_star_cluster.new_cluster()
     gas = Particles()
-    se = SSE()
+    se = Sse()
     se.particles.add_particles(stars)
     from_se = se.particles.new_channel_to(stars)
     from_se.copy()
