@@ -6,6 +6,7 @@ reflecting and/or obscuring light). Gas may also be displayed with contour
 lines.
 """
 
+import sys
 import os
 import argparse
 
@@ -165,8 +166,8 @@ def fresco_argument_parser(parser=None):
         help=(
             "PSF type. Looks for a .fits file of the given name, uses this if "
             "it exists.\n"
-            'Otherwise, "hubble", "wfc3", "wfpc2" and "gaussian" are valid '
-            "options."
+            "Otherwise, 'hubble', 'wfc3', 'wfpc2', 'gaussian' and a local PSF file "
+            "are valid options."
         ),
     )
     parser.add_argument(
@@ -174,7 +175,7 @@ def fresco_argument_parser(parser=None):
         dest="psf_sigma",
         default=1.0,
         type=float,
-        help="PSF sigma (if PSF type is gaussian)",
+        help="PSF sigma (only used if PSF type is gaussian)",
     )
     parser.add_argument(
         "--fl",
@@ -257,7 +258,7 @@ def main():
         psf_type = psf_type.lower()
         if psf_type not in ["hubble", "gaussian"]:
             print(f"Invalid PSF type or file does not exist: {psf_type}")
-            exit()
+            sys.exit()
     psf_sigma = args.psf_sigma
     age = args.age
     image_width = args.width
@@ -271,6 +272,22 @@ def main():
     y_offset = args.y_offset
     z_offset = args.z_offset
     extinction = args.calculate_extinction
+
+    # sanity check
+    if starsfilename is None:
+        nostars = True
+    elif not os.path.exists(starsfilename):
+        nostars = True
+    else:
+        nostars = False
+    if gasfilename is None:
+        nogas = True
+    elif not os.path.exists(gasfilename):
+        nogas = True
+    else:
+        nogas = False
+    if nostars and nogas:
+        raise FileNotFoundError("Need at least one of a stars or gas file")
 
     # Derived settings
 

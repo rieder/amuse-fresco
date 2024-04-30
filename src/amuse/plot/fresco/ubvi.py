@@ -135,7 +135,6 @@ def rgb_frame(
     verbose=False,
     visualisation_mode="visual",
 ):
-
     if gas is None:
         gas = Particles()
 

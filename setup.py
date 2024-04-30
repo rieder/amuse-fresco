@@ -11,7 +11,7 @@ url = "https://github.com/rieder/fresco"
 
 install_requires = [
     "wheel>=0.32",
-    "amuse-framework>=2022.6.0",
+    "amuse-framework>=2024.4.0",
     "scipy",
     "matplotlib",
     "astropy",
@@ -47,6 +47,7 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Topic :: Scientific/Engineering :: Astronomy",
 ]
 
@@ -73,7 +74,7 @@ setup(
     classifiers=classifiers,
     url=url,
     project_urls={
-        "Bug Tracker": "https://github.com/rieder/fresco/issues",
+        "Bug Tracker": "https://github.com/rieder/amuse-fresco/issues",
     },
     author_email=author_email,
     author=author,
