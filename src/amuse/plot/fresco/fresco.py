@@ -54,8 +54,7 @@ def calculate_effective_temperature(luminosity, radius):
     temp = (
         np.nan_to_num(
             (
-                (luminosity / (constants.four_pi_stefan_boltzmann * radius**2))
-                ** 0.25
+                (luminosity / (constants.four_pi_stefan_boltzmann * radius**2)) ** 0.25
             ).value_in(units.K)
         )
         | units.K
