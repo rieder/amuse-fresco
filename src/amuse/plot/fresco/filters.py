@@ -125,9 +125,7 @@ if __name__ == "__main__":
 
     print(fb)
     print(
-        (fb * (1.0 | units.RSun) ** 2 / (1.0 | units.AU) ** 2).in_(
-            units.W / units.m**2
-        )
+        (fb * (1.0 | units.RSun) ** 2 / (1.0 | units.AU) ** 2).in_(units.W / units.m**2)
     )
     print(
         (
