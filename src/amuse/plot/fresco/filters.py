@@ -1,6 +1,6 @@
 import os
 
-import numpy
+import numpy as np
 
 from amuse.units import units, quantities
 
@@ -38,7 +38,7 @@ def get_filter_data(instrument="WFPC_II_WFC3", filters=bessellfilters):
                 line = line.split()
                 wavelength.append(float(line[0]) | units.angstrom)
                 throughput.append(float(line[1]))
-            throughput = numpy.array(throughput)
+            throughput = np.array(throughput)
 
             filter_data[filters[band]] = dict(
                 wavelength=wavelength,
@@ -60,7 +60,7 @@ def filter_band_flux(
     else:
         xp = fdata["wavelength"]
         fp = fdata["throughput"]
-        throughput = numpy.interp(
+        throughput = np.interp(
             wavelength.value_in(units.angstrom),
             xp=xp.value_in(units.angstrom),
             fp=fp,
@@ -69,7 +69,7 @@ def filter_band_flux(
         )
     src = throughput * source(wavelength)
     src = quantities.to_quantity(src)
-    return numpy.trapz(
+    return np.trapz(
         src.number,
         x=wavelength.number,
     ) | (src.unit * wavelength.unit)
@@ -94,11 +94,11 @@ def plot_filters(
     n = 1000
     for band in filters:
         wavelength = min_wavelength + (max_wavelength - min_wavelength) * (
-            numpy.array(range(n + 1)) / n
+            np.array(range(n + 1)) / n
         )
         xp = filter_data[filters[band]]["wavelength"]
         fp = filter_data[filters[band]]["throughput"]
-        f = numpy.interp(
+        f = np.interp(
             wavelength.value_in(wavelength_unit),
             xp=xp.value_in(wavelength_unit),
             fp=fp,
@@ -114,9 +114,13 @@ def plot_filters(
 
 
 if __name__ == "__main__":
+    from .blackbody import B_lambda, energy_flux2
+
     plot_filters(filters=bessellfilters)
 
     T = 5000.0 | units.K
+
+    filter_data = get_filter_data()
 
     fb = filter_band_flux(
         filter_data["bess-u.pass"],
