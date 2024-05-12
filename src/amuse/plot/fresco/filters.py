@@ -115,6 +115,7 @@ def plot_filters(
 
 if __name__ == "__main__":
     from .blackbody import B_lambda, energy_flux2
+
     plot_filters(filters=bessellfilters)
 
     T = 5000.0 | units.K
