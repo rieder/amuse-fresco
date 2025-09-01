@@ -1,2 +1,46 @@
+[project]
+name = "amuse-fresco"
+dynamic = ["version"]
+requires-python = ">=3.7"
+dependencies = [
+    "amuse-framework",
+    "matplotlib",
+]
+
+[project.scripts]
+fresco = "amuse_fresco.run:main"
+
 [build-system]
-requires = [ "amuse-framework>=2022.11.0", "scipy", "astropy", "matplotlib" ]
+requires = ["hatchling", "versioningit"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "versioningit"
+
+[tool.versioningit.next-version]
+method = "smallest"
+
+[tool.versioningit.format]
+distance = "{next_version}.dev{distance}+{vcs}{rev}"
+dirty = "{base_version}+d{build_date:%Y%m%d}"
+distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.d{build_date:%Y%m%d}"
+
+[tool.hatch.build]
+skip-excluded-dirs = true
+
+# [tool.hatch.build.targets.wheel]
+# include = ["amuse_fresco/*.py", "amuse_fresco/data"]
+# exclude = [
+#     "amuse_fresco/packages",
+#     "amuse_fresco/support",
+#     "amuse_fresco/src",
+#     "amuse_fresco/tests",
+#     ]
+# artifacts = []
+
+[tool.pytest.ini_options]
+pythonpath = ["amuse_fresco/tests"]
+
+testpaths = ["amuse_fresco/tests"]
+addopts = "--import-mode=append"    # test the installed package
+
