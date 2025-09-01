@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Fresco creates a "simulated observation" of a set of particles.
 Particles can be "stars" (point sources emitting light) or "gas" (emitting,
@@ -26,7 +25,7 @@ def evolve_to_age(stars, age, stellar_evolution="seba"):
         stellar_evolution = Sse()
         # SSE can result in nan values for luminosity/radius
     else:
-        raise (
+        raise ValueError(
             f"No such stellar evolution code {stellar_evolution} or no code "
             f"specified"
         )
@@ -54,7 +53,7 @@ def calculate_effective_temperature(luminosity, radius):
     temp = (
         np.nan_to_num(
             (
-                (luminosity / (constants.four_pi_stefan_boltzmann * radius**2)) ** 0.25
+                (luminosity / (constants.four_pi_stefan_boltzmann * radius**2))**0.25
             ).value_in(units.K)
         )
         | units.K

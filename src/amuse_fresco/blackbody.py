@@ -1,24 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Functions for calculating a black body spectrum.
+"""Functions for calculating a black body spectrum."""
 
-"""
-
-from __future__ import (
-    print_function,
-    division,
-)
-import numpy
+import numpy as np
 from numpy import (
     pi,
     e,
 )
 
 from amuse.units import units
-from amuse.units.constants import (
-    kB,
-    h,
-    c,
-)
+from amuse.units.constants import kB, h, c
 from amuse.units.constants import Rydberg_constant as Ry
 from amuse.units.constants import Stefan_hyphen_Boltzmann_constant as sigma
 
@@ -40,7 +30,7 @@ def B_lambda(wavelength, temperature):
                 * c
                 / (
                     (
-                        numpy.outer(
+                        np.outer(
                             temperature.value_in(units.K), wavelength.value_in(units.m)
                         )
                         | units.K * units.m
@@ -85,7 +75,7 @@ def wiens_T_from_lambda_max(wavelength):
 
 
 def energy_flux(T, lowfreq=0.0 | units.s**-1, N=1000):
-    nu = (numpy.arange(N + 1) + 1.0) / N * (kB * T) / h * 25.0 + lowfreq
+    nu = (np.arange(N + 1) + 1.0) / N * (kB * T) / h * 25.0 + lowfreq
     b = pi * B_nu(nu, T)
     return (b[1:] + b[:-1]).sum() / 2 * (nu[1] - nu[0])
 
@@ -93,13 +83,13 @@ def energy_flux(T, lowfreq=0.0 | units.s**-1, N=1000):
 def energy_flux2(T, lambdas=None, throughput=1.0, N=1000):
     if lambdas is None:
         lmax = wiens_lambda_max(T)
-        lambdas = lmax * 10 ** (-2.0 + 4.0 * numpy.arange(N + 1) / float(N))
+        lambdas = lmax * 10 ** (-2.0 + 4.0 * np.arange(N + 1) / float(N))
     b = pi * throughput * B_lambda(lambdas, T)
-    return numpy.trapz(b.number, x=lambdas.number) | (b.unit * lambdas.unit)
+    return np.trapz(b.number, x=lambdas.number) | (b.unit * lambdas.unit)
 
 
 def photon_flux(T, lowfreq=0.0 | units.s**-1, N=100000):
-    nu = (numpy.arange(N + 1) + 1.0) / N * (kB * T) / h * 25.0 + lowfreq
+    nu = (np.arange(N + 1) + 1.0) / N * (kB * T) / h * 25.0 + lowfreq
     n = pi * B_nu(nu, T) / energy(nu)
     return (n[1:] + n[:-1]).sum() / 2 * (nu[1] - nu[0])
 
@@ -119,13 +109,13 @@ if __name__ == "__main__":
 
     print()
     nf = photon_flux(T, lowfreq=freq_from_wavenumber(Ry))
-    print((numpy.log10(nf.value_in(units.cm**-2 * units.s**-1))))
+    print((np.log10(nf.value_in(units.cm**-2 * units.s**-1))))
     print()
 
     a = photon_flux(T)
-    print((numpy.log10(a.value_in(units.cm**-2 * units.s**-1))))
+    print((np.log10(a.value_in(units.cm**-2 * units.s**-1))))
     b = sigma * T**4 / (kB * T) / 2.7
-    print((numpy.log10(b.value_in(units.cm**-2 * units.s**-1))))
+    print((np.log10(b.value_in(units.cm**-2 * units.s**-1))))
 
     print((b / a))
     print((nf / b))
