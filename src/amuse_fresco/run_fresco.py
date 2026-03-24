@@ -11,10 +11,8 @@ import os
 import argparse
 
 import numpy as np
+import numpy.random as npr
 
-import matplotlib
-
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from amuse.units import units, nbody_system
@@ -22,8 +20,8 @@ from amuse.datamodel import Particles
 from amuse.io import read_set_from_file
 from amuse.datamodel.rotation import rotate
 
-from amuse.plot.fresco.fieldstars import new_field_stars
-from amuse.plot.fresco.fresco import (
+from amuse_fresco.fieldstars import new_field_stars
+from amuse_fresco.fresco import (
     evolve_to_age,
     make_image,
     column_density_map,
@@ -56,7 +54,9 @@ def fresco_argument_parser(parser=None):
     parser.add_argument(
         "-f",
         dest="followfilename",
-        help=("file containing star keys to center on (optional, implies --com)"),
+        help=(
+            "file containing star keys to center on (optional, implies --com)"
+        ),
     )
     parser.add_argument(
         "-o",
@@ -72,8 +72,12 @@ def fresco_argument_parser(parser=None):
     parser.add_argument(
         "-b",
         dest="sourcebands",
-        default="ubvri",
-        help="colour bands to use",
+        nargs="+",
+        default=["u", "b", "v", "r", "i"],
+        help=(
+            "colour bands to use (choose any of 'u', 'b', 'v', 'r', 'i', "
+            "'halpha')"
+        ),
     )
     parser.add_argument(
         "-a",
@@ -166,8 +170,8 @@ def fresco_argument_parser(parser=None):
         help=(
             "PSF type. Looks for a .fits file of the given name, uses this if "
             "it exists.\n"
-            "Otherwise, 'hubble', 'wfc3', 'wfpc2', 'gaussian' and a local PSF file "
-            "are valid options."
+            "Otherwise, 'hubble', 'wfc3', 'wfpc2', 'gaussian' and a local PSF "
+            "file are valid options."
         ),
     )
     parser.add_argument(
@@ -219,10 +223,20 @@ def fresco_argument_parser(parser=None):
         type=units.pc,
         help="Z offset",
     )
+    parser.add_argument(
+        "--wcs",
+        dest="wcs",
+        type=str,
+        default=None,
+        help="Use WCS projection from FITS header",
+    )
     return parser.parse_args()
 
 
-def main():
+def run_fresco():
+    """
+    Run Fresco (from the command line)
+    """
     # Standard settings
     stellar_evolution = True
     se_code = "SeBa"
@@ -243,13 +257,21 @@ def main():
     n_fieldstars = args.n_fieldstars
     filetype = args.filetype
     contours = args.contours
-    np.random.seed(args.seed)
+    npr.seed(args.seed)
     plot_axes = args.plot_axes
     angle_x = args.angle_x
     angle_y = args.angle_y
     angle_z = args.angle_z
     sourcebands = args.sourcebands
     psf_type = args.psf_type
+    if args.wcs is not None:
+        from astropy.wcs import WCS
+        from astropy.io import fits
+        with fits.open(args.wcs) as hdul:
+            wcs = WCS(hdul[1].header)
+    else:
+        wcs = None
+
     if os.path.exists(psf_type):
         psf_file = psf_type
         psf_type = "file"
@@ -302,11 +324,12 @@ def main():
             close_file=True,
         )
         if stellar_evolution and (age > 0 | units.Myr):
-            print(("Calculating luminosity/temperature for %s old stars..." % (age)))
+            print(f"Calculating luminosity/temperature for {age} old stars...")
             evolve_to_age(stars, age, stellar_evolution=se_code)
         elif args.fixed_luminosity:
             for band in sourcebands:
-                setattr(stars, band + "_band", 1.0 | units.LSun)
+                if not hasattr(stars, band + "_band"):
+                    setattr(stars, band + "_band", 1.0 | units.LSun)
         if use_com:
             if followfilename is not None:
                 followstars = read_set_from_file(
@@ -321,6 +344,7 @@ def main():
                 center_on_these_stars = stars
             com = center_on_these_stars.center_of_mass()
             x_offset, y_offset, z_offset = com
+        print(f"Centering on ({x_offset}, {y_offset}, {z_offset})")
 
         # Select only the relevant gas particles (plus a margin)
         # note: the margin should at least be half the PSF width - probably
@@ -333,17 +357,21 @@ def main():
             image_width = max(maxx - minx, maxy - miny)
             x_offset = (maxx + minx) / 2
             y_offset = (maxy + miny) / 2
-        stars.x -= x_offset
-        stars.y -= y_offset
-        stars.z -= z_offset
-        minx = 1.5 * -image_width / 2
-        maxx = 1.5 * image_width / 2
-        miny = 1.5 * -image_width / 2
-        maxy = 1.5 * image_width / 2
+        # stars.x -= x_offset
+        # stars.y -= y_offset
+        # stars.z -= z_offset
+        minx = x_offset - 1.5 * image_width / 2
+        maxx = x_offset + 1.5 * image_width / 2
+        miny = y_offset - 1.5 * image_width / 2
+        maxy = y_offset + 1.5 * image_width / 2
+        print(f"Selecting stars within ({minx}, {miny}) and ({maxx}, {maxy})")
+        print(f"Initially we have {len(stars)} stars")
         stars = stars[stars.x > minx]
         stars = stars[stars.x < maxx]
+        print(f"After X selection, we have {len(stars)} stars")
         stars = stars[stars.y > miny]
         stars = stars[stars.y < maxy]
+        print(f"After selection, we have {len(stars)} stars")
     else:
         stars = Particles()
 
@@ -355,11 +383,14 @@ def main():
             width=image_width,
             height=image_width,
         )
-        fieldstars.age = minage + (np.random.sample(n_fieldstars) * (maxage - minage))
+        fieldstars.age = minage + (
+            npr.sample(n_fieldstars) * (maxage - minage)
+        )
         evolve_to_age(fieldstars, 0 | units.yr, stellar_evolution=se_code)
         stars.add_particles(fieldstars)
 
     if gasfilename:
+        print(f"Reading gas from {gasfilename}")
         gas = read_set_from_file(
             gasfilename,
             filetype,
@@ -369,19 +400,19 @@ def main():
             if stars.is_empty():
                 com = gas.center_of_mass()
                 x_offset, y_offset, z_offset = com
-        gas.x -= x_offset
-        gas.y -= y_offset
-        gas.z -= z_offset
+        # gas.x -= x_offset
+        # gas.y -= y_offset
+        # gas.z -= z_offset
         # Gadget and Fi disagree on the definition of h_smooth.
         # For gadget, need to divide by 2 to get the Fi value (??)
         # gas.h_smooth *= 0.5
         # gas.radius = gas.h_smooth
 
         # Select only the relevant gas particles (plus a margin)
-        minx = 1.1 * -image_width / 2
-        maxx = 1.1 * image_width / 2
-        miny = 1.1 * -image_width / 2
-        maxy = 1.1 * image_width / 2
+        minx = x_offset - 1.1 * image_width / 2
+        maxx = x_offset + 1.1 * image_width / 2
+        miny = y_offset - 1.1 * image_width / 2
+        maxy = y_offset + 1.1 * image_width / 2
         gas_ = gas.select(
             lambda x, y: x > minx and x < maxx and y > miny and y < maxy, ["x", "y"]
         )
@@ -390,8 +421,11 @@ def main():
         gas = Particles()
     # gas.h_smooth = 0.05 | units.parsec
 
+    # Somehow, the converter influences the image rotation in FiMap?!
+    # So, take a fixed converter.
     converter = nbody_system.nbody_to_si(
-        stars.total_mass() if not stars.is_empty() else gas.total_mass(),
+        stars.total_mass(),
+        # stars.total_mass() if not stars.is_empty() else gas.total_mass(),
         image_width,
     )
 
@@ -405,21 +439,39 @@ def main():
         x_offset=x_offset,
         y_offset=y_offset,
         z_offset=z_offset,
+        wcs=wcs,
     )
     ax = fig.get_axes()[0]
     xmin, xmax = ax.get_xlim()
     ymin, ymax = ax.get_ylim()
 
     if not stars.is_empty():
+        if (
+            angle_x != 0 | units.deg
+            and angle_y != 0 | units.deg
+            and angle_z != 0 | units.deg
+        ):
+            x_angle = (frames - 1) * angle_x
+            y_angle = (frames - 1) * angle_y
+            z_angle = (frames - 1) * angle_z
+            print(
+                f"Frame {frames - 1}, "
+                f"rotating stars by {x_angle.value_in(units.deg)} "
+                f"{y_angle.value_in(units.deg)} "
+                f"{z_angle.value_in(units.deg)}"
+            )
+            rotate(
+                stars,
+                (frames - 1) * angle_x,
+                (frames - 1) * angle_y,
+                (frames - 1) * angle_z,
+            )
+    if not gas.is_empty():
         rotate(
-            stars,
+            gas,
             (frames - 1) * angle_x,
             (frames - 1) * angle_y,
             (frames - 1) * angle_z,
-        )
-    if not gas.is_empty():
-        rotate(
-            gas, (frames - 1) * angle_x, (frames - 1) * angle_y, (frames - 1) * angle_z
         )
     for frame in range(frames):
         frame += frames
@@ -433,10 +485,26 @@ def main():
 
         if (frame != 0) or (frames == 1):
             if not stars.is_empty():
-                rotate(stars, angle_x, angle_y, angle_z)
+                if (
+                    angle_x != 0 | units.deg
+                    or angle_y != 0 | units.deg
+                    or angle_z != 0 | units.deg
+                ):
+                    print(
+                        f"Rotating stars by {angle_x.value_in(units.deg)} "
+                        f"{angle_y.value_in(units.deg)} "
+                        f"{angle_z.value_in(units.deg)}"
+                    )
+                    rotate(stars, angle_x, angle_y, angle_z)
             if not gas.is_empty():
                 rotate(gas, angle_x, angle_y, angle_z)
 
+        length_unit = x_offset.unit
+        origin = [
+            x_offset.value_in(length_unit) - 0.5 * image_width.value_in(length_unit),
+            y_offset.value_in(length_unit) - 0.5 * image_width.value_in(length_unit),
+            z_offset.value_in(length_unit),
+        ] | length_unit
         image, vmax = make_image(
             stars=stars if not stars.is_empty() else None,
             gas=gas if not gas.is_empty() else None,
@@ -444,7 +512,7 @@ def main():
             image_width=image_width,
             image_size=image_size,
             percentile=percentile,
-            calc_temperature=False if not hasattr(stars, "temperature") else True,
+            calc_temperature=not hasattr(stars, "temperature"),
             age=age,
             vmax=vmax,
             sourcebands=sourcebands,
@@ -454,20 +522,28 @@ def main():
             psf_sigma=psf_sigma,
             return_vmax=True,
             extinction=extinction,
+            origin=origin,
         )
         print(f"vmax = {vmax}")
 
         if not stars.is_empty():
+            try:
+                image_imshow = image / image.max()
+            except ValueError:
+                image_imshow = image
             ax.imshow(
-                image,
+                image_imshow,
                 origin="lower",
-                extent=[
-                    xmin,
-                    xmax,
-                    ymin,
-                    ymax,
-                ],
+                # extent=[
+                #     xmin,
+                #     xmax,
+                #     ymin,
+                #     ymax,
+                # ],
+                # transform=ax.get_transform("fk5"),
             )
+            if wcs is not None and plot_axes:
+                ax.coords.grid(True, color="white", ls="solid")
             if contours and not gas.is_empty():
                 gascontours = column_density_map(
                     gas,
@@ -523,20 +599,23 @@ def main():
             )
 
         if frames > 1:
-            savefilename = "%s-%06i.%s" % (
-                imagefilename if imagefilename is not None else "test",
-                frame,
-                imagetype,
+            savefilename = (
+                f"{imagefilename if imagefilename is not None else "test"}"
+                f"-{frame:06i}.{imagetype}"
             )
         else:
-            savefilename = "%s.%s" % (
-                imagefilename if imagefilename is not None else "test",
-                imagetype,
+            savefilename = (
+                f"{imagefilename if imagefilename is not None else "test"}"
+                f".{imagetype}"
             )
         plt.savefig(
             savefilename,
             dpi=dpi,
         )
+
+
+def main():
+    run_fresco()
 
 
 if __name__ == "__main__":

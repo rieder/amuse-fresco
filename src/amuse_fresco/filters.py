@@ -21,7 +21,10 @@ bessellfilters = {
 }  # Bessell 1990 filters
 
 
-def get_filter_data(instrument="WFPC_II_WFC3", filters=bessellfilters):
+def get_filter_data(
+    instrument="WFC3_TINYTIM",
+    filters=bessellfilters
+):
     this_dir, this_filename = os.path.split(__file__)
     if this_dir == "":
         this_dir = "."

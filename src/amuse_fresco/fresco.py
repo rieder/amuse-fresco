@@ -68,11 +68,12 @@ def make_image(
     converter=None,
     image_width=10.0 | units.parsec,
     image_height=None,
+    distance=100 | units.pc,
     padding_fraction=0.1,
     image_size=[1024, 1024],
     percentile=0.9995,
     age=0.0 | units.Myr,
-    sourcebands="ubvri",
+    sourcebands=["u", "b", "v", "r", "i"],
     vmax=None,
     calc_temperature=True,
     mapper_code=None,  # "FiMap"
@@ -82,12 +83,20 @@ def make_image(
     psf_sigma=1.0,
     extinction=False,
     return_vmax=False,
-    origin=[0, 0, 0] | units.pc,
+    origin=None,
     visualisation_mode="visual",
+    viewpoint=None
 ):
     """
     Makes image from gas and stars
     """
+    if origin is None:
+        origin = [0, 0, 0] | units.pc
+    image_target = origin
+    image_target[0] += image_width / 2
+    image_target[1] += image_width / 2
+    viewpoint = image_target.copy()
+    viewpoint[2] -= distance
     if image_height is None:
         image_height = image_width
     mode = []
@@ -95,37 +104,37 @@ def make_image(
         mode.append("gas")
         # Only keep the relevant gas
         gas_all = gas
-        x_lower = origin[0] - (padding_fraction + 0.5) * image_width
-        x_upper = origin[0] + (padding_fraction + 0.5) * image_width
-        y_lower = origin[1] - (padding_fraction + 0.5) * image_height
-        y_upper = origin[1] + (padding_fraction + 0.5) * image_height
+        x_lower = origin[0] - padding_fraction * image_width
+        x_upper = origin[0] + (padding_fraction + 1) * image_width
+        y_lower = origin[1] - padding_fraction * image_height
+        y_upper = origin[1] + (padding_fraction + 1) * image_height
         gas_relevant_indices = (
             (gas_all.x >= x_lower)
             & (gas_all.x <= x_upper)
             & (gas_all.y >= y_lower)
             & (gas_all.y <= y_upper)
         )
-        gas = gas_all[gas_relevant_indices]
-        gas.x -= origin[0]
-        gas.y -= origin[1]
-        gas.z -= origin[2]
     if stars is not None:
         mode.append("stars")
     if not mode:
-        return
+        print("No gas or stars specified")
+        return -1
 
     if extinction:
         # Extinction can currently only be handled with FiMap
         mapper_code = "FiMap"
+    mapper_code = "FiMap"
+    perspective = True
 
     if mapper_code == "FiMap":
 
         def mapper():
             from amuse.community.fi.interface import FiMap
 
-            mapper = FiMap(converter, mode="openmp")
+            print("Setting up FiMap")
+            mapper = FiMap(converter, mode="openmp", )
 
-            # mapper.parameters.minimum_distance = 1. | units.AU
+            # mapper.parameters.minimum_distance = 1. | units.au
             mapper.parameters.image_size = image_size
             # mapper.parameters.image_target = image_target
 
@@ -137,7 +146,26 @@ def make_image(
             # mapper.parameters.projection_mode = projection
             # mapper.parameters.image_angle = horizontal_angle
             # mapper.parameters.viewpoint = viewpoint
+            if perspective:
+                # NOTE: in perspective mode, the image may rotate if the axes are not exactly clear
+                mapper.parameters.projection_mode = "perspective"
+                # image_target = [0, 0, 0] | units.pc  # coordinate center?
+                mapper.parameters.image_target = image_target
+                # Warning: when projection direction and upvector align, need
+                # to do a "meridian flip"!
+                mapper.parameters.upvector = [0, -1, 0]
+                mapper.parameters.viewpoint = viewpoint
+                mapper.parameters.projection_direction = (
+                    (image_target-viewpoint)
+                    / (image_target-viewpoint).length()
+                )
             mapper.parameters.extinction_flag = extinction
+            with open(f"mapper_width_{image_width}a.txt", "w") as f:
+                f.write(str(mapper.parameters))
+            print(mapper.parameters)
+            print(f"viewpoint: {viewpoint}")
+            print(f"image_target: {image_target}")
+            print(f"length: {(image_target-viewpoint).length()}")
             return mapper
 
     else:
@@ -230,9 +258,9 @@ def image_from_stars(
     image_width=10.0 | units.parsec,
     image_size=[1024, 1024],
     percentile=0.9995,
-    calc_temperature=True,
+    calc_temperature=False,
     age=0.0 | units.Myr,
-    sourcebands="ubvri",
+    sourcebands=["u", "b", "v", "r", "i"],
     gas=None,
     vmax=None,
     mapper_factory=None,
@@ -244,7 +272,11 @@ def image_from_stars(
     return_vmax=False,
     visualisation_mode="visual",
 ):
-    if not hasattr(stars, "temperature"):
+    if (
+        not hasattr(stars, "temperature")
+        and hasattr(stars, "radius")
+        and hasattr(stars, "luminosity")
+    ):
         calc_temperature = True
     if calc_temperature:
         # calculates the temperature of the stars from their total luminosity
@@ -288,7 +320,11 @@ def initialise_image(
     x_offset=0 | units.parsec,
     y_offset=0 | units.parsec,
     z_offset=0 | units.parsec,
+    wcs=None,
 ):
+    if wcs is not None:
+        fig, ax = plt.subplots(subplot_kw=dict(projection=wcs))
+        return fig
     if fig is None:
         if plot_axes:
             left = 0.2
@@ -307,7 +343,9 @@ def initialise_image(
         ymin = y_offset.value_in(length_unit) - 0.5 * image_width.value_in(length_unit)
         ymax = y_offset.value_in(length_unit) + 0.5 * image_width.value_in(length_unit)
 
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=figsize, dpi=dpi)
+        fig = plt.figure(figsize=figsize, dpi=dpi)
+        print(f"using wcs projection {wcs}")
+        ax = fig.add_subplot(1, 1, 1, projection=wcs)
         fig.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
 
         ax.set_xlim([xmin, xmax])

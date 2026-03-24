@@ -1,16 +1,13 @@
-# -*- coding: utf-8 -*-
 """
 Contains helper functions to create images from particle positions and
 luminosities.
 """
 
-from __future__ import (
-    print_function,
-    division,
-)
 import os
+import gzip
 
-import numpy
+import numpy as np
+from numpy import pi
 from scipy.ndimage import zoom, gaussian_filter
 
 from astropy.convolution import (
@@ -18,10 +15,12 @@ from astropy.convolution import (
     convolve_fft,
 )
 
-import astropy.io.fits as pyfits
+from astropy.io import fits
 
 from amuse.datamodel import Particles
 from amuse.units import units
+from amuse.units.quantities import VectorQuantity
+from amuse.units.trigo import cos, sin, arccos, arctan2
 
 # import logging
 # logging.basicConfig(level=logging.DEBUG)
@@ -36,7 +35,52 @@ from .blackbody import B_lambda
 from .color_converter import ColorConverter, XYZ_to_sRGB_linear, sRGB_linear_to_sRGB
 
 
-def Convolve(
+def ease_out_sine(x: float) -> float:
+    return sin((x * pi) / 2)
+
+
+def ease_in_sine(x: float) -> float:
+    return 1 - cos((x * pi) / 2)
+
+
+def ease_in_out_sine(x: float) -> float:
+    return -(cos(pi * x) - 1) / 2
+
+
+def get_viewpoint(
+    i: int,
+    waypoints: list,  # t -> int, x -> float, y -> float, z -> float
+    transitions: list,  # easing functions, length is one less than waypoints
+) -> VectorQuantity:
+    nsteps = len(waypoints)
+    if i == 0:
+        y, z, x = waypoints[0][1:]
+        vec = [
+            y.value_in(units.parsec),
+            z.value_in(units.parsec),
+            x.value_in(units.parsec),
+        ] | units.parsec
+        return vec
+    # Find last waypoint before step i
+    for j in range(nsteps - 1):
+        if waypoints[j+1][0] > i:
+            break
+    t = (i - waypoints[j][0]) / (waypoints[j+1][0] - waypoints[j][0])
+
+    # Linear interpolation
+    x = waypoints[j][1] + (waypoints[j+1][1] - waypoints[j][1]) * transitions[j](t)
+    y = waypoints[j][2] + (waypoints[j+1][2] - waypoints[j][2]) * transitions[j](t)
+    z = waypoints[j][3] + (waypoints[j+1][3] - waypoints[j][3]) * transitions[j](t)
+
+    vec = [
+        y.value_in(units.parsec),
+        x.value_in(units.parsec),
+        z.value_in(units.parsec),
+    ] | units.parsec
+    return vec
+
+
+def convolve(
     image,
     kernel,
 ):
@@ -45,10 +89,10 @@ def Convolve(
 
 
 def get_psf(
-    instrument="WFPC_II_WFC3",
+    instrument="WFC3_TINYTIM",
     zoom_factor=1.0,
 ):
-    psf = dict()
+    psf = {}
     this_dir = os.path.split(__file__)[0]
     if this_dir == "":
         this_dir = "."
@@ -58,10 +102,10 @@ def get_psf(
     for band in "ubvri":
         for i in range(4):
             psf_filename = datadir + band + "%2.2i.fits" % i
-            f = pyfits.open(psf_filename)
+            f = fits.open(psf_filename)
             if zoom_factor != 1.0:
                 psf[band + str(i)] = zoom(
-                    numpy.array(f[0].data),
+                    np.array(f[0].data),
                     zoom_factor,
                     order=3,
                     mode="constant",
@@ -69,7 +113,7 @@ def get_psf(
                     prefilter=True,
                 )
             else:
-                psf[band + str(i)] = numpy.array(f[0].data)
+                psf[band + str(i)] = np.array(f[0].data)
     return psf
 
 
@@ -100,7 +144,7 @@ def assign_weights_and_opacities(
 
     mapper_gas.opacity_area = f_H * gas.mass.value_in(units.amu) * dust_cross_section
 
-    weight = numpy.zeros(len(mapper_gas))
+    weight = np.zeros(len(mapper_gas))
     stars_ordered_by_lum = stars.sorted_by_attribute(band + "_band")
     Nstar = min(Nstar, len(stars))
     for star in stars_ordered_by_lum[-Nstar:]:
@@ -110,7 +154,7 @@ def assign_weights_and_opacities(
             + (gas.z - star.z) ** 2
             + 0.25 * gas.radius**2
         )
-        flux = getattr(star, band + "_band") / (4 * numpy.pi * d2)
+        flux = getattr(star, band + "_band") / (4 * np.pi * d2)
         weight += (flux * mapper_gas.opacity_area * dust_albedo).value_in(units.LSun)
     mapper_gas.weight = weight
     return
@@ -118,23 +162,26 @@ def assign_weights_and_opacities(
 
 def rgb_frame(
     stars,
+    gas=None,
     dryrun=False,
     vmax=None,
     percentile=0.9995,
     multi_psf=False,
-    sourcebands="ubvri",
+    sourcebands=None,
     image_width=12.0 | units.parsec,
-    image_size=[1024, 1024],
+    image_size=None,
     mapper_factory=None,
-    gas=None,
-    mapper_code=None,
-    zoom_factor=1.0,
     psf_type="hubble",
     psf_file=None,
     psf_sigma=1.0,
-    verbose=False,
     visualisation_mode="visual",
+    zoom_factor=1.0,
+    verbose=False,
 ):
+    if sourcebands is None:
+        sourcebands = ["u", "b", "v", "r", "i"]
+    if image_size is None:
+        image_size = [1024, 1024]
     if gas is None:
         gas = Particles()
 
@@ -157,91 +204,120 @@ def rgb_frame(
     if verbose:
         print("..raw images..")
 
-    if mapper_code != "gridify":
-        # Use mapper to make raw (pre-convolved) images
-        mapper = mapper_factory()
-        stars_in_mapper = mapper.particles.add_particles(stars)
-        gas_in_mapper = mapper.particles.add_particles(gas)
+    # Use mapper to make raw (pre-convolved) images
+    mapper = mapper_factory()
+    print(f"Adding {len(stars)} stars and {len(gas)} gas particles")
+    stars_in_mapper = mapper.particles.add_particles(stars)
+    gas_in_mapper = mapper.particles.add_particles(gas)
+    # mapper.parameters.projection_direction = [0, 0, 1]
+    # mapper.parameters.upvector = [0, -1, 0]
 
-        mapper.parameters.projection_direction = [0, 0, 1]
-        mapper.parameters.upvector = [0, -1, 0]
+    raw_images = {}
+    for band in sourcebands:
+        assign_weights_and_opacities(
+            band,
+            stars_in_mapper,
+            gas_in_mapper,
+            stars,
+            gas,
+            Nstar=1000,
+        )
+        # mapper.particles.weight = getattr(
+        #         stars,
+        #         band+"_band"
+        #         ).value_in(units.LSun)
+        viewpoint_origin = mapper.parameters.viewpoint
+        image_target = mapper.parameters.image_target
+        upvector = mapper.parameters.upvector
 
-        raw_images = dict()
-        for band in sourcebands:
-            assign_weights_and_opacities(
-                band,
-                stars_in_mapper,
-                gas_in_mapper,
-                stars,
-                gas,
-                Nstar=500,
+        print(f"Image target: {image_target}")
+
+        # rotate around upvector in 1 deg steps
+        distance = -100 | units.pc
+        # initial_viewpoint = (
+        #     [
+        #         0, 0, 5*distance.value_in(units.pc),
+        #     ] | units.pc
+        # )
+        initial_viewpoint = (
+            [
+                0,
+                0,
+                distance.value_in(units.pc),
+            ] | units.pc
+        )
+        mid_viewpoint = (
+            [
+                0.4 * distance.value_in(units.pc),
+                0,
+                0,
+            ] | units.pc
+        )
+        final_viewpoint = (
+            [
+                0,
+                0,
+                -distance.value_in(units.pc),
+            ] | units.pc
+        )
+        nsteps = 1
+        waypoints = [
+            (0, initial_viewpoint[0], initial_viewpoint[1], initial_viewpoint[2]),
+            (nsteps//2, mid_viewpoint[0], mid_viewpoint[1], mid_viewpoint[2]),
+            (nsteps, final_viewpoint[0], final_viewpoint[1], final_viewpoint[2]),
+        ]
+        transitions = [
+            ease_in_sine,
+            ease_out_sine
+        ]
+        # for i in range(0, nsteps, 1):
+        for i in range(nsteps):
+            relative_viewpoint = get_viewpoint(i, waypoints, transitions)
+
+            viewpoint = image_target + relative_viewpoint
+            mapper.parameters.viewpoint = viewpoint
+            mapper.parameters.projection_direction = (
+                (image_target-viewpoint)
+                / (image_target-viewpoint).length()
             )
-            # mapper.particles.weight = getattr(
-            #         stars,
-            #         band+"_band"
-            #         ).value_in(units.LSun)
+            print(f"Angle {i}: rel.viewpoint {relative_viewpoint} and projection direction {mapper.parameters.projection_direction}")
+            print(f"{image_target-viewpoint}, {relative_viewpoint}, {(image_target-viewpoint).length()}")
             im = mapper.image.pixel_value
-            raw_images[band] = numpy.fliplr(im)
+            # with gzip.GzipFile(f"flight5_raw_{band}_{i+100:03}.npy.gz", "wb") as f:
+            #     np.save(file=f, arr=im)
+            if i == 0:
+                raw_images[band] = np.fliplr(im)
+    mapper.stop()
 
-        mapper.stop()
-    else:
-        # Use simpler python mapping script
-        from .gridify import map_to_grid
-
-        stars_in_mapper = stars.copy()
-        gas_in_mapper = gas.copy()
-        raw_images = dict()
-
-        for band in sourcebands:
-            assign_weights_and_opacities(
-                band,
-                stars_in_mapper,
-                gas_in_mapper,
-                stars,
-                gas,
-                Nstar=500,
-            )
-            allparticles = Particles()
-            allparticles.add_particles(stars_in_mapper)
-            allparticles.add_particles(gas_in_mapper)
-            im = map_to_grid(
-                allparticles.x,
-                allparticles.y,
-                weights=allparticles.weight,
-                image_size=image_size,
-                image_width=image_width,
-            )
-            raw_images[band] = im
-
-    convolved_images = dict()
+    convolved_images = {}
 
     if verbose:
         print("..convolving..")
 
     if psf_type == "file":
         print(f"PSF: {psf_file}")
-        with pyfits.open(psf_file) as psf:
+        with fits.open(psf_file) as psf:
             for key, val in list(raw_images.items()):
-                im1 = Convolve(val, psf[0].data)
+                im1 = convolve(val, psf[0].data)
                 convolved_images[key] = im1
     elif psf_type == "hubble":
         psf = get_psf(zoom_factor=zoom_factor)
         if multi_psf:
-            a = numpy.arange(image_size[0]) / float(image_size[0] - 1)
-            b = numpy.arange(image_size[1]) / float(image_size[1] - 1)
-            w1 = numpy.outer(a, b)
-            w2 = numpy.outer(1.0 - a, b)
-            w3 = numpy.outer(a, 1.0 - b)
-            w4 = numpy.outer(1.0 - a, 1.0 - b)
+            a = np.arange(image_size[0]) / float(image_size[0] - 1)
+            b = np.arange(image_size[1]) / float(image_size[1] - 1)
+            w1 = np.outer(a, b)
+            w2 = np.outer(1.0 - a, b)
+            w3 = np.outer(a, 1.0 - b)
+            w4 = np.outer(1.0 - a, 1.0 - b)
             for key, val in list(raw_images.items()):
-                im1 = Convolve(val, psf[key + "0"])
-                im2 = Convolve(val, psf[key + "1"])
-                im3 = Convolve(val, psf[key + "2"])
-                im4 = Convolve(val, psf[key + "3"])
+                im1 = convolve(val, psf[key + "0"])
+                im2 = convolve(val, psf[key + "1"])
+                im3 = convolve(val, psf[key + "2"])
+                im4 = convolve(val, psf[key + "3"])
                 convolved_images[key] = w1 * im1 + w2 * im2 + w3 * im3 + w4 * im4
         else:
             for key, val in list(raw_images.items()):
-                im1 = Convolve(val, psf[key + "0"])
+                im1 = convolve(val, psf[key + "0"])
                 convolved_images[key] = im1
     elif psf_type == "gaussian":
         for key, val in list(raw_images.items()):
@@ -258,11 +334,11 @@ def rgb_frame(
 
         conv = ColorConverter(source, target)
 
-        ubv = numpy.array([convolved_images[x] for x in sourcebands])
+        ubv = np.array([convolved_images[x] for x in sourcebands])
 
-        xyz = numpy.tensordot(conv.conversion_matrix, ubv, axes=(1, 0))
+        xyz = np.tensordot(conv.conversion_matrix, ubv, axes=(1, 0))
         conv_xyz_to_lin = XYZ_to_sRGB_linear()
-        srgb_l = numpy.tensordot(
+        srgb_l = np.tensordot(
             conv_xyz_to_lin.conversion_matrix,
             xyz,
             axes=(1, 0),
@@ -274,10 +350,10 @@ def rgb_frame(
         for x in sourcebands:
             band = convolved_images[x]
             srgb_l.append(band / band.max())
-        srgb_l = numpy.array(srgb_l)
+        srgb_l = np.array(srgb_l)
 
     if dryrun or vmax is None:
-        flat_sorted = numpy.sort(srgb_l.flatten())
+        flat_sorted = np.sort(srgb_l.flatten())
         n = len(flat_sorted)
         vmax = flat_sorted[int(1.0 - 3 * (1.0 - percentile) * n)]
         if verbose:
@@ -289,20 +365,25 @@ def rgb_frame(
 
     srgb = conv_lin_to_sRGB.convert(srgb_l / vmax)
 
-    # r = numpy.fliplr(srgb[0, :, :])
-    # g = numpy.fliplr(srgb[1, :, :])
-    # b = numpy.fliplr(srgb[2, :, :])
+    # r = np.fliplr(srgb[0, :, :])
+    # g = np.fliplr(srgb[1, :, :])
+    # b = np.fliplr(srgb[2, :, :])
 
-    rgb = numpy.zeros(image_size[0] * image_size[1] * 4)
+    rgb = np.zeros(image_size[0] * image_size[1] * 4)
     rgb = rgb.reshape(image_size[0], image_size[1], 4)
     rgb[:, :, 0] = srgb[0, :, :].T
     rgb[:, :, 1] = srgb[1, :, :].T
     rgb[:, :, 2] = srgb[2, :, :].T
     rgb[:, :, 3] = 1  # alpha channel
 
-    image = dict(
-        pixels=rgb,
-        size=rgb.size,
-    )
+    image = {
+        "pixels": rgb,
+        "size": rgb.size,
+    }
+
+    # convert from double to uint8
+    # image["pixels"] = np.clip(image["pixels"] * 256, 0, 255).astype("uint8")
+    # convert from double to uint16
+    image["pixels"] = np.clip(image["pixels"] * 65536, 0, 65535).astype("uint16")
 
     return vmax, image
