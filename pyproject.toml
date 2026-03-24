@@ -8,7 +8,7 @@ dependencies = [
 ]
 
 [project.scripts]
-fresco = "amuse_fresco.run:main"
+fresco = "amuse_fresco.run_fresco:main"
 
 [build-system]
 requires = ["hatchling", "versioningit"]
