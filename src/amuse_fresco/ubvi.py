@@ -100,7 +100,7 @@ def get_psf(
     datadir = this_dir + "/data/" + instrument + "/"
 
     for band in "ubvri":
-        for i in range(4):
+        for i in range(1):
             psf_filename = datadir + band + "%2.2i.fits" % i
             f = fits.open(psf_filename)
             if zoom_factor != 1.0:
