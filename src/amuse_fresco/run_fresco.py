@@ -82,7 +82,7 @@ def fresco_argument_parser(parser=None):
     parser.add_argument(
         "-a",
         dest="age",
-        default=100 | units.Myr,
+        default=None,
         type=units.Myr,
         help="age of the stars",
     )
@@ -238,7 +238,6 @@ def run_fresco():
     Run Fresco (from the command line)
     """
     # Standard settings
-    stellar_evolution = True
     se_code = "SeBa"
     length_unit = units.parsec
     dpi = 600
@@ -282,7 +281,8 @@ def run_fresco():
             print(f"Invalid PSF type or file does not exist: {psf_type}")
             sys.exit()
     psf_sigma = args.psf_sigma
-    age = args.age
+    age = 0 | units.yr if args.age is None else args.age
+    stellar_evolution = age > 0 | units.yr
     image_width = args.width
     pixels = args.pixels
     frames = args.frames

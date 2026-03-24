@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
 from amuse.units import units, constants
+from amuse.community.fi import FiMap
 from .ubvi import rgb_frame
 from .gridify import map_to_grid
 
@@ -76,7 +77,6 @@ def make_image(
     sourcebands=["u", "b", "v", "r", "i"],
     vmax=None,
     calc_temperature=True,
-    mapper_code=None,  # "FiMap"
     zoom_factor=1.0,
     psf_type="hubble",
     psf_file=None,
@@ -117,61 +117,49 @@ def make_image(
     if stars is not None:
         mode.append("stars")
     if not mode:
-        print("No gas or stars specified")
-        return -1
+        raise ValueError(
+            "No gas or stars specified, or stars/gas out of bounds"
+        )
 
-    if extinction:
-        # Extinction can currently only be handled with FiMap
-        mapper_code = "FiMap"
-    mapper_code = "FiMap"
     perspective = True
 
-    if mapper_code == "FiMap":
+    def mapper():
+        print("Setting up FiMap")
+        mapper = FiMap(converter, mode="openmp", )
 
-        def mapper():
-            from amuse.community.fi.interface import FiMap
+        # mapper.parameters.minimum_distance = 1. | units.au
+        mapper.parameters.image_size = image_size
+        # mapper.parameters.image_target = image_target
 
-            print("Setting up FiMap")
-            mapper = FiMap(converter, mode="openmp", )
-
-            # mapper.parameters.minimum_distance = 1. | units.au
-            mapper.parameters.image_size = image_size
-            # mapper.parameters.image_target = image_target
-
-            mapper.parameters.image_width = image_width
-            # mapper.parameters.projection_direction = (
-            #         (image_target-viewpoint)
-            #         / (image_target-viewpoint).length()
-            #         )
-            # mapper.parameters.projection_mode = projection
-            # mapper.parameters.image_angle = horizontal_angle
-            # mapper.parameters.viewpoint = viewpoint
-            if perspective:
-                # NOTE: in perspective mode, the image may rotate if the axes are not exactly clear
-                mapper.parameters.projection_mode = "perspective"
-                # image_target = [0, 0, 0] | units.pc  # coordinate center?
-                mapper.parameters.image_target = image_target
-                # Warning: when projection direction and upvector align, need
-                # to do a "meridian flip"!
-                mapper.parameters.upvector = [0, -1, 0]
-                mapper.parameters.viewpoint = viewpoint
-                mapper.parameters.projection_direction = (
-                    (image_target-viewpoint)
-                    / (image_target-viewpoint).length()
-                )
-            mapper.parameters.extinction_flag = extinction
-            with open(f"mapper_width_{image_width}a.txt", "w") as f:
-                f.write(str(mapper.parameters))
-            print(mapper.parameters)
-            print(f"viewpoint: {viewpoint}")
-            print(f"image_target: {image_target}")
-            print(f"length: {(image_target-viewpoint).length()}")
-            return mapper
-
-    else:
-        # Gridify as default
-        mapper = None
-        mapper_code = "gridify"
+        mapper.parameters.image_width = image_width
+        # mapper.parameters.projection_direction = (
+        #         (image_target-viewpoint)
+        #         / (image_target-viewpoint).length()
+        #         )
+        # mapper.parameters.projection_mode = projection
+        # mapper.parameters.image_angle = horizontal_angle
+        # mapper.parameters.viewpoint = viewpoint
+        if perspective:
+            # NOTE: in perspective mode, the image may rotate if the axes are not exactly clear
+            mapper.parameters.projection_mode = "perspective"
+            # image_target = [0, 0, 0] | units.pc  # coordinate center?
+            mapper.parameters.image_target = image_target
+            # Warning: when projection direction and upvector align, need
+            # to do a "meridian flip"!
+            mapper.parameters.upvector = [0, -1, 0]
+            mapper.parameters.viewpoint = viewpoint
+            mapper.parameters.projection_direction = (
+                (image_target-viewpoint)
+                / (image_target-viewpoint).length()
+            )
+        mapper.parameters.extinction_flag = extinction
+        with open(f"mapper_width_{image_width}a.txt", "w") as f:
+            f.write(str(mapper.parameters))
+        print(mapper.parameters)
+        print(f"viewpoint: {viewpoint}")
+        print(f"image_target: {image_target}")
+        print(f"length: {(image_target-viewpoint).length()}")
+        return mapper
 
     if "stars" not in mode:
         image = column_density_map(
@@ -179,7 +167,6 @@ def make_image(
             image_width=image_width,
             image_size=image_size,
             mapper_factory=mapper,
-            mapper_code=mapper_code,
             zoom_factor=zoom_factor,
             psf_type=psf_type,
             psf_sigma=psf_sigma,
@@ -198,7 +185,6 @@ def make_image(
             gas=gas,
             vmax=vmax,
             mapper_factory=mapper,
-            mapper_code=mapper_code,
             zoom_factor=zoom_factor,
             psf_type=psf_type,
             psf_file=psf_file,
@@ -214,40 +200,23 @@ def column_density_map(
     image_width=10.0 | units.parsec,
     image_size=[1024, 1024],
     mapper_factory=None,
-    mapper_code=None,
     zoom_factor=1.0,
     psf_type="gaussian",
     psf_sigma=10.0,
     return_vmax=False,
 ):
-    if mapper_code == "FiMap":
-        if callable(mapper_factory):
-            mapper = mapper_factory()
+    if callable(mapper_factory):
+        mapper = mapper_factory()
 
-        p = mapper.particles.add_particles(gas)
-        p.weight = gas.mass.value_in(units.amu)
-        projected = mapper.image.pixel_value
-        mapper.stop()
-        im = gaussian_filter(
-            projected,
-            sigma=psf_sigma * zoom_factor,
-            order=0,
-        )
-    else:
-        gas_in_mapper = gas.copy()
-        gas_in_mapper.weight = gas_in_mapper.mass.value_in(units.amu)
-        raw_image = map_to_grid(
-            gas_in_mapper.x,
-            gas_in_mapper.y,
-            weights=gas_in_mapper.weight,
-            image_size=image_size,
-            image_width=image_width,
-        )
-        im = gaussian_filter(
-            raw_image,
-            sigma=psf_sigma * zoom_factor,
-            order=0,
-        ).T
+    p = mapper.particles.add_particles(gas)
+    p.weight = gas.mass.value_in(units.amu)
+    projected = mapper.image.pixel_value
+    mapper.stop()
+    im = gaussian_filter(
+        projected,
+        sigma=psf_sigma * zoom_factor,
+        order=0,
+    )
     if return_vmax:
         return (im, -1)
     return im
@@ -264,7 +233,6 @@ def image_from_stars(
     gas=None,
     vmax=None,
     mapper_factory=None,
-    mapper_code=None,
     zoom_factor=1.0,
     psf_type="hubble",
     psf_file=None,
@@ -272,6 +240,7 @@ def image_from_stars(
     return_vmax=False,
     visualisation_mode="visual",
 ):
+    print(f"Return_vmax: {return_vmax}")
     if (
         not hasattr(stars, "temperature")
         and hasattr(stars, "radius")
@@ -297,7 +266,6 @@ def image_from_stars(
         sourcebands=sourcebands,
         mapper_factory=mapper_factory,
         gas=gas,
-        mapper_code=mapper_code,
         zoom_factor=zoom_factor,
         psf_type=psf_type,
         psf_file=psf_file,

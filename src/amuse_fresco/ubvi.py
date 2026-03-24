@@ -154,7 +154,7 @@ def assign_weights_and_opacities(
             + (gas.z - star.z) ** 2
             + 0.25 * gas.radius**2
         )
-        flux = getattr(star, band + "_band") / (4 * np.pi * d2)
+        flux = getattr(star, band + "_band") / (4 * pi * d2)
         weight += (flux * mapper_gas.opacity_area * dust_albedo).value_in(units.LSun)
     mapper_gas.weight = weight
     return
@@ -194,7 +194,7 @@ def rgb_frame(
                 stars,
                 band + "_band",
                 4
-                * numpy.pi
+                * pi
                 * stars.radius**2
                 * filter_band_flux(
                     "bess-" + band + ".pass",
