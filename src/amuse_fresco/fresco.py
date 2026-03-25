@@ -83,7 +83,7 @@ def make_image(
     extinction=False,
     return_vmax=False,
     origin=None,
-    visualisation_mode=None,
+    visualisation_mode="visual",
     flightpath=None,  # Flight path of the camera relative to the origin
     verbose=False,
 ):
