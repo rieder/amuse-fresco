@@ -85,7 +85,7 @@ def energy_flux2(T, lambdas=None, throughput=1.0, N=1000):
         lmax = wiens_lambda_max(T)
         lambdas = lmax * 10 ** (-2.0 + 4.0 * np.arange(N + 1) / float(N))
     b = pi * throughput * B_lambda(lambdas, T)
-    return np.trapz(b.number, x=lambdas.number) | (b.unit * lambdas.unit)
+    return np.trapezoid(b.number, x=lambdas.number) | (b.unit * lambdas.unit)
 
 
 def photon_flux(T, lowfreq=0.0 | units.s**-1, N=100000):

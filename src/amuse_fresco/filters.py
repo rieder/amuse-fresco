@@ -72,7 +72,7 @@ def filter_band_flux(
         )
     src = throughput * source(wavelength)
     src = quantities.to_quantity(src)
-    return numpy.trapz(
+    return numpy.trapezoid(
         src.number,
         x=wavelength.number,
     ) | (src.unit * wavelength.unit)

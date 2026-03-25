@@ -83,7 +83,7 @@ class ColorConverter:
             )
             for i, b in enumerate(self.base):
                 bint = f * self.fbase(b)(larray)
-                Amatrix[j, i] = np.trapz(bint, x=larray.number)
+                Amatrix[j, i] = np.trapezoid(bint, x=larray.number)
 
         Bmatrix = np.zeros((self.dim2, self.dim))
 
@@ -99,7 +99,7 @@ class ColorConverter:
             )
             for i, b in enumerate(self.base):
                 bint = f * self.fbase(b)(larray)
-                Bmatrix[j, i] = np.trapz(
+                Bmatrix[j, i] = np.trapezoid(
                     bint,
                     x=larray.number,
                 )
