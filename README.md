@@ -36,23 +36,27 @@ that may be obscured by the gas/dust particles.
     from amuse.datamodel import Particles
     from amuse.units import units, nbody_system
     from amuse.community.sse import Sse
-    from amuse.ext.masc import make_a_star_cluster
-    from amuse.plot.fresco import make_fresco_image
-    ?make_fresco_image  # See options
-    stars = make_a_star_cluster.new_cluster()
+    from amuse.ic.plummer import new_plummer_sphere
+    from amuse.ic.kroupa import new_kroupa_mass_distribution
+    from amuse_fresco import make_fresco_image
+    ?make_fresco_image  # Show options
+    stars_mass = new_kroupa_mass_distribution(1024)
+    stars = new_plummer_sphere(1024, nbody_system.nbody_to_si(stars_mass.sum(), 3 | units.pc))
+    stars.mass = stars_mass
     gas = Particles()
     se = Sse()
     se.particles.add_particles(stars)
     from_se = se.particles.new_channel_to(stars)
     from_se.copy()
-    image, vmax = make_fresco_image(
-        stars, gas,
+    images, vmax = make_fresco_image(
+        stars=stars,
+        gas=gas,
         mode=["stars"],
         return_vmax=True,
     )
-    plt.imshow(image)
+    plt.imshow(images[0])
     plt.show()
 
 ## Authors
 
-Fresco is developed by Inti Pelupessy and Steven Rieder
+Fresco is developed by Steven Rieder and was started by Inti Pelupessy

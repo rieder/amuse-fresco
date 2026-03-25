@@ -62,13 +62,12 @@ def calculate_effective_temperature(luminosity, radius):
 
 
 def make_image(
-    maps=None,
     stars=None,
     gas=None,
     converter=None,
     image_width=10.0 | units.parsec,
     image_height=None,
-    distance=None,
+    distance=10 | units.parsec,
     padding_fraction=0.1,
     image_size=[1024, 1024],
     percentile=0.9995,
