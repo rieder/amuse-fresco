@@ -11,7 +11,6 @@ from scipy.ndimage import gaussian_filter
 from amuse.units import units, constants
 from amuse.community.fi import FiMap
 from .ubvi import rgb_frame
-from .gridify import map_to_grid
 
 
 def evolve_to_age(stars, age, stellar_evolution="seba"):
@@ -69,7 +68,7 @@ def make_image(
     converter=None,
     image_width=10.0 | units.parsec,
     image_height=None,
-    distance=100 | units.pc,
+    distance=None,
     padding_fraction=0.1,
     image_size=[1024, 1024],
     percentile=0.9995,
@@ -84,8 +83,9 @@ def make_image(
     extinction=False,
     return_vmax=False,
     origin=None,
-    visualisation_mode="visual",
-    viewpoint=None
+    visualisation_mode=None,
+    flightpath=None,  # Flight path of the camera relative to the origin
+    verbose=False,
 ):
     """
     Makes image from gas and stars
@@ -95,8 +95,12 @@ def make_image(
     image_target = origin
     image_target[0] += image_width / 2
     image_target[1] += image_width / 2
-    viewpoint = image_target.copy()
-    viewpoint[2] -= distance
+    if flightpath is None:
+        viewpoint = image_target.copy()
+        viewpoint[2] += distance
+        flightpath = [viewpoint,]
+    else:
+        flightpath = flightpath + image_target
     if image_height is None:
         image_height = image_width
     mode = []
@@ -132,14 +136,8 @@ def make_image(
         # mapper.parameters.image_target = image_target
 
         mapper.parameters.image_width = image_width
-        # mapper.parameters.projection_direction = (
-        #         (image_target-viewpoint)
-        #         / (image_target-viewpoint).length()
-        #         )
-        # mapper.parameters.projection_mode = projection
-        # mapper.parameters.image_angle = horizontal_angle
-        # mapper.parameters.viewpoint = viewpoint
         if perspective:
+            viewpoint = flightpath[0]
             # NOTE: in perspective mode, the image may rotate if the axes are not exactly clear
             mapper.parameters.projection_mode = "perspective"
             # image_target = [0, 0, 0] | units.pc  # coordinate center?
@@ -164,7 +162,6 @@ def make_image(
     if "stars" not in mode:
         image = column_density_map(
             gas,
-            image_width=image_width,
             image_size=image_size,
             mapper_factory=mapper,
             zoom_factor=zoom_factor,
@@ -176,7 +173,6 @@ def make_image(
         print("vmax: ", vmax)
         image = image_from_stars(
             stars,
-            image_width=image_width,
             image_size=image_size,
             percentile=percentile,
             calc_temperature=calc_temperature,
@@ -191,13 +187,15 @@ def make_image(
             psf_sigma=psf_sigma,
             return_vmax=return_vmax,
             visualisation_mode=visualisation_mode,
+            distance=distance,
+            flightpath=flightpath,
+            verbose=verbose,
         )
     return image
 
 
 def column_density_map(
     gas,
-    image_width=10.0 | units.parsec,
     image_size=[1024, 1024],
     mapper_factory=None,
     zoom_factor=1.0,
@@ -224,7 +222,6 @@ def column_density_map(
 
 def image_from_stars(
     stars,
-    image_width=10.0 | units.parsec,
     image_size=[1024, 1024],
     percentile=0.9995,
     calc_temperature=False,
@@ -239,6 +236,9 @@ def image_from_stars(
     psf_sigma=1.0,
     return_vmax=False,
     visualisation_mode="visual",
+    distance=None,
+    flightpath=None,
+    verbose=False,
 ):
     print(f"Return_vmax: {return_vmax}")
     if (
@@ -258,9 +258,8 @@ def image_from_stars(
     vmax, rgb = rgb_frame(
         stars,
         dryrun=False,
-        image_width=image_width,
         vmax=vmax,
-        multi_psf=False,  # True,
+        multi_psf=False,
         image_size=image_size,
         percentile=percentile,
         sourcebands=sourcebands,
@@ -271,10 +270,16 @@ def image_from_stars(
         psf_file=psf_file,
         psf_sigma=psf_sigma,
         visualisation_mode=visualisation_mode,
+        distance=distance,
+        flightpath=flightpath,
+        verbose=verbose,
     )
+    pixels = []
+    for i in range(len(flightpath)):
+        pixels.append(rgb[i]["pixels"])
     if return_vmax:
-        return rgb["pixels"], vmax
-    return rgb["pixels"]
+        return pixels, vmax
+    return pixels
 
 
 def initialise_image(

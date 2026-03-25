@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 
 from .blackbody import B_lambda
 
@@ -34,7 +34,7 @@ base3 = [
 default_base = base1
 
 
-class ColorConverter(object):
+class ColorConverter:
     def __init__(
         self,
         source,
@@ -67,14 +67,14 @@ class ColorConverter(object):
         self.dim2 = len(target)
         self.N = N
 
-        larray = lmin + (lmax - lmin) * numpy.array(list(range(N + 1))) / N
+        larray = lmin + (lmax - lmin) * np.array(list(range(N + 1))) / N
 
-        Amatrix = numpy.zeros((self.dim, self.dim))
+        Amatrix = np.zeros((self.dim, self.dim))
 
         for j, src in enumerate(source):
             xp = src["wavelength"]
             fp = src["throughput"]
-            f = numpy.interp(
+            f = np.interp(
                 larray.number,
                 xp=xp.value_in(larray.unit),
                 fp=fp,
@@ -83,14 +83,14 @@ class ColorConverter(object):
             )
             for i, b in enumerate(self.base):
                 bint = f * self.fbase(b)(larray)
-                Amatrix[j, i] = numpy.trapz(bint, x=larray.number)
+                Amatrix[j, i] = np.trapz(bint, x=larray.number)
 
-        Bmatrix = numpy.zeros((self.dim2, self.dim))
+        Bmatrix = np.zeros((self.dim2, self.dim))
 
         for j, src in enumerate(target):
             xp = src["wavelength"]
             fp = src["throughput"]
-            f = numpy.interp(
+            f = np.interp(
                 larray.number,
                 xp=xp.value_in(larray.unit),
                 fp=fp,
@@ -99,7 +99,7 @@ class ColorConverter(object):
             )
             for i, b in enumerate(self.base):
                 bint = f * self.fbase(b)(larray)
-                Bmatrix[j, i] = numpy.trapz(
+                Bmatrix[j, i] = np.trapz(
                     bint,
                     x=larray.number,
                 )
@@ -107,7 +107,7 @@ class ColorConverter(object):
         self.larray = larray
         self.Amatrix = Amatrix
         self.Bmatrix = Bmatrix
-        self.Ainv = numpy.linalg.inv(Amatrix)
+        self.Ainv = np.linalg.inv(Amatrix)
         self.conversion_matrix = Bmatrix.dot(self.Ainv)
 
     def fbase(self, b):
@@ -117,9 +117,9 @@ class ColorConverter(object):
         return self.conversion_matrix.dot(x)
 
 
-class XYZ_to_sRGB_linear(object):
+class XYZ_to_sRGB_linear:
     def __init__(self):
-        self.conversion_matrix = numpy.array(
+        self.conversion_matrix = np.array(
             [
                 [3.2406, -1.5372, -0.4986],
                 [-0.9689, 1.8758, 0.0415],
@@ -131,7 +131,7 @@ class XYZ_to_sRGB_linear(object):
         return self.conversion_matrix.dot(x)
 
 
-class sRGB_linear_to_sRGB(object):
+class sRGB_linear_to_sRGB:
     def __init__(self):
         self.a = 0.055
 
@@ -140,8 +140,8 @@ class sRGB_linear_to_sRGB(object):
 
     def convert(self, x):
         x = self.clip(x)
-        a = numpy.where(x <= 0.0031308)
-        b = numpy.where(x > 0.0031308)
+        a = np.where(x <= 0.0031308)
+        b = np.where(x > 0.0031308)
         x[a] = 12.92 * x[a]
         x[b] = (1 + self.a) * x[b] ** (1 / 2.4) - self.a
         return x

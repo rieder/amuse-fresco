@@ -20,13 +20,34 @@ from amuse.datamodel import Particles
 from amuse.io import read_set_from_file
 from amuse.datamodel.rotation import rotate
 
-from amuse_fresco.fieldstars import new_field_stars
 from amuse_fresco.fresco import (
     evolve_to_age,
     make_image,
     column_density_map,
     initialise_image,
 )
+
+
+def read_flightpath(filename):
+    """
+    Read a flight path.
+    A flight path file looks like:
+        # x y z
+        # unit: pc
+        0.0 0.0 0.0
+        1.0 0.0 0.0
+        2.0 0.0 0.0
+        3.0 0.0 0.0
+    """
+    with open(filename, "r") as f:
+        f.readline()
+        line = f.readline()
+        unit = getattr(units, line[7:].strip())
+        flightpath = [] | unit
+        for line in f:
+            x, y, z = map(float, line.split())
+            flightpath.append([x, y, z] | unit)
+    return flightpath
 
 
 def fresco_argument_parser(parser=None):
@@ -117,16 +138,9 @@ def fresco_argument_parser(parser=None):
     parser.add_argument(
         "--vmax",
         dest="vmax",
-        default=0,
+        default=None,
         type=float,
         help="vmax value",
-    )
-    parser.add_argument(
-        "--field",
-        dest="n_fieldstars",
-        default=0,
-        type=int,
-        help="add N field stars (optional)",
     )
     parser.add_argument(
         "--ax",
@@ -157,6 +171,13 @@ def fresco_argument_parser(parser=None):
         help="Number of frames (>1: rotate around x,y,z)",
     )
     parser.add_argument(
+        "--startframe",
+        dest="startframe",
+        default=0,
+        type=int,
+        help="Starting frame number",
+    )
+    parser.add_argument(
         "--px",
         dest="pixels",
         default=2048,
@@ -182,13 +203,6 @@ def fresco_argument_parser(parser=None):
         help="PSF sigma (only used if PSF type is gaussian)",
     )
     parser.add_argument(
-        "--fl",
-        dest="fixed_luminosity",
-        action="store_true",
-        default=False,
-        help="Use a fixed, equal luminosity and temperature for all stars",
-    )
-    parser.add_argument(
         "--contours",
         dest="contours",
         action="store_true",
@@ -207,21 +221,27 @@ def fresco_argument_parser(parser=None):
         dest="x_offset",
         default=0.0 | units.pc,
         type=units.pc,
-        help="X offset",
+        help="X coordinate of the target",
     )
     parser.add_argument(
         "--yo",
         dest="y_offset",
         default=0.0 | units.pc,
         type=units.pc,
-        help="Y offset",
+        help="Y coordinate of the target",
     )
     parser.add_argument(
         "--zo",
         dest="z_offset",
         default=0.0 | units.pc,
         type=units.pc,
-        help="Z offset",
+        help="z coordinate of the target",
+    )
+    parser.add_argument(
+        "--distance",
+        default=10.0 | units.pc,
+        type=units.pc,
+        help="Observer's distance to the target",
     )
     parser.add_argument(
         "--wcs",
@@ -229,6 +249,27 @@ def fresco_argument_parser(parser=None):
         type=str,
         default=None,
         help="Use WCS projection from FITS header",
+    )
+    parser.add_argument(
+        "--mode",
+        dest="visualisation_mode",
+        default="visual",
+        type=str,
+        help="Visualisation mode (visual or rgb)",
+    )
+    parser.add_argument(
+        "--flightpath",
+        dest="flightpath_file",
+        type=str,
+        default=None,
+        help="Flight path file",
+    )
+    parser.add_argument(
+        "--verbose",
+        dest="verbose",
+        action="store_true",
+        default=False,
+        help="verbose output",
     )
     return parser.parse_args()
 
@@ -238,22 +279,20 @@ def run_fresco():
     Run Fresco (from the command line)
     """
     # Standard settings
-    se_code = "SeBa"
+    se_code = "Seba"
     length_unit = units.parsec
     dpi = 600
     percentile = 0.9995  # for determining vmax
 
     # Parse arguments
     args = fresco_argument_parser()
-    if args.fixed_luminosity:
-        stellar_evolution = False
+
     starsfilename = args.starsfilename
     gasfilename = args.gasfilename
     followfilename = args.followfilename
     imagefilename = args.imagefilename
     imagetype = args.imagetype
-    vmax = args.vmax if args.vmax > 0 else None
-    n_fieldstars = args.n_fieldstars
+    vmax = args.vmax
     filetype = args.filetype
     contours = args.contours
     npr.seed(args.seed)
@@ -263,6 +302,31 @@ def run_fresco():
     angle_z = args.angle_z
     sourcebands = args.sourcebands
     psf_type = args.psf_type
+    psf_sigma = args.psf_sigma
+    distance = -args.distance
+    visualisation_mode = args.visualisation_mode
+    image_width = args.width
+    pixels = args.pixels
+    frames = args.frames
+    startframe = args.startframe
+    verbose = args.verbose
+    flightpath_file = args.flightpath_file
+
+    # read flightpath (one viewpoint per line)
+    if flightpath_file is not None:
+        flightpath = read_flightpath(flightpath_file)
+    else:
+        flightpath = None
+
+    if visualisation_mode not in ["visual", "rgb"]:
+        raise ValueError(f"Invalid visualisation mode: {visualisation_mode}")
+    elif visualisation_mode == "rgb":
+        # Check if we have exactly 3 source bands
+        if len(sourcebands) != 3:
+            raise ValueError(
+                "RGB visualisation mode requires exactly 3 source bands"
+            )
+
     if args.wcs is not None:
         from astropy.wcs import WCS
         from astropy.io import fits
@@ -280,12 +344,8 @@ def run_fresco():
         if psf_type not in ["hubble", "gaussian"]:
             print(f"Invalid PSF type or file does not exist: {psf_type}")
             sys.exit()
-    psf_sigma = args.psf_sigma
     age = 0 | units.yr if args.age is None else args.age
     stellar_evolution = age > 0 | units.yr
-    image_width = args.width
-    pixels = args.pixels
-    frames = args.frames
     if followfilename is not None:
         use_com = True
     else:
@@ -321,21 +381,15 @@ def run_fresco():
         stars = read_set_from_file(
             starsfilename,
             filetype,
-            close_file=True,
         )
         if stellar_evolution and (age > 0 | units.Myr):
             print(f"Calculating luminosity/temperature for {age} old stars...")
             evolve_to_age(stars, age, stellar_evolution=se_code)
-        elif args.fixed_luminosity:
-            for band in sourcebands:
-                if not hasattr(stars, band + "_band"):
-                    setattr(stars, band + "_band", 1.0 | units.LSun)
         if use_com:
             if followfilename is not None:
                 followstars = read_set_from_file(
                     followfilename,
                     filetype,
-                    close_file=True,
                 )
                 center_on_these_stars = followstars.get_intersecting_subset_in(
                     stars,
@@ -375,26 +429,11 @@ def run_fresco():
     else:
         stars = Particles()
 
-    if n_fieldstars:
-        minage = 400 | units.Myr
-        maxage = 12 | units.Gyr
-        fieldstars = new_field_stars(
-            n_fieldstars,
-            width=image_width,
-            height=image_width,
-        )
-        fieldstars.age = minage + (
-            npr.sample(n_fieldstars) * (maxage - minage)
-        )
-        evolve_to_age(fieldstars, 0 | units.yr, stellar_evolution=se_code)
-        stars.add_particles(fieldstars)
-
     if gasfilename:
         print(f"Reading gas from {gasfilename}")
         gas = read_set_from_file(
             gasfilename,
             filetype,
-            close_file=True,
         )
         if use_com:
             if stars.is_empty():
@@ -445,36 +484,19 @@ def run_fresco():
     xmin, xmax = ax.get_xlim()
     ymin, ymax = ax.get_ylim()
 
-    if not stars.is_empty():
-        if (
-            angle_x != 0 | units.deg
-            and angle_y != 0 | units.deg
-            and angle_z != 0 | units.deg
-        ):
-            x_angle = (frames - 1) * angle_x
-            y_angle = (frames - 1) * angle_y
-            z_angle = (frames - 1) * angle_z
-            print(
-                f"Frame {frames - 1}, "
-                f"rotating stars by {x_angle.value_in(units.deg)} "
-                f"{y_angle.value_in(units.deg)} "
-                f"{z_angle.value_in(units.deg)}"
-            )
-            rotate(
-                stars,
-                (frames - 1) * angle_x,
-                (frames - 1) * angle_y,
-                (frames - 1) * angle_z,
-            )
-    if not gas.is_empty():
-        rotate(
-            gas,
-            (frames - 1) * angle_x,
-            (frames - 1) * angle_y,
-            (frames - 1) * angle_z,
+    if startframe != 0:
+        initial_angle_x = (startframe - 1) * angle_x
+        initial_angle_y = (startframe - 1) * angle_y
+        initial_angle_z = (startframe - 1) * angle_z
+        print(
+            f"Rotating to initial frame: "
+            f"{initial_angle_x} {initial_angle_y} {initial_angle_z}"
         )
-    for frame in range(frames):
-        frame += frames
+        if not stars.is_empty():
+            rotate(stars, initial_angle_x, initial_angle_y, initial_angle_z)
+        if not gas.is_empty():
+            rotate(gas, initial_angle_x, initial_angle_y, initial_angle_z)
+    for frame in range(startframe, frames):
         print(
             f"frame {frame}, "
             f"angle: {frame * angle_x.value_in(units.deg)} "
@@ -505,7 +527,7 @@ def run_fresco():
             y_offset.value_in(length_unit) - 0.5 * image_width.value_in(length_unit),
             z_offset.value_in(length_unit),
         ] | length_unit
-        image, vmax = make_image(
+        images, vmax = make_image(
             stars=stars if not stars.is_empty() else None,
             gas=gas if not gas.is_empty() else None,
             converter=converter,
@@ -523,95 +545,109 @@ def run_fresco():
             return_vmax=True,
             extinction=extinction,
             origin=origin,
+            distance=distance,
+            visualisation_mode=visualisation_mode,
+            flightpath=flightpath,
+            verbose=verbose,
         )
         print(f"vmax = {vmax}")
 
-        if not stars.is_empty():
-            try:
-                image_imshow = image / image.max()
-            except ValueError:
-                image_imshow = image
-            ax.imshow(
-                image_imshow,
-                origin="lower",
-                # extent=[
-                #     xmin,
-                #     xmax,
-                #     ymin,
-                #     ymax,
-                # ],
-                # transform=ax.get_transform("fk5"),
-            )
-            if wcs is not None and plot_axes:
-                ax.coords.grid(True, color="white", ls="solid")
-            if contours and not gas.is_empty():
-                gascontours = column_density_map(
+        if flightpath is None:
+            number_of_images = 1
+        else:
+            number_of_images = len(flightpath)
+        for imagenr in range(number_of_images):
+            image = images[imagenr]
+            if not stars.is_empty():
+                try:
+                    image_imshow = image / image.max()
+                except ValueError:
+                    image_imshow = image
+                ax.imshow(
+                    image_imshow,
+                    origin="lower",
+                    # extent=[
+                    #     xmin,
+                    #     xmax,
+                    #     ymin,
+                    #     ymax,
+                    # ],
+                    # transform=ax.get_transform("fk5"),
+                )
+                if wcs is not None and plot_axes:
+                    ax.coords.grid(True, color="white", ls="solid")
+                if contours and not gas.is_empty():
+                    gascontours = column_density_map(
+                        gas,
+                        zoom_factor=zoom_factor,
+                        image_width=image_width,
+                        image_size=image_size,
+                    )
+                    gascontours[np.isnan(gascontours)] = 0.0
+                    vmax = np.max(gascontours) / 2
+                    # vmin = np.min(image[np.where(image > 0.0)])
+                    vmin = vmax / 100
+                    levels = (
+                        10
+                        ** (
+                            np.linspace(
+                                np.log10(vmin),
+                                np.log10(vmax),
+                                num=5,
+                            )
+                        )[1:]
+                    )
+                    # print(vmin, vmax)
+                    # print(levels)
+                    ax.contour(
+                        origin="lower",
+                        levels=levels,
+                        colors="white",
+                        linewidths=0.1,
+                        extent=[
+                            xmin,
+                            xmax,
+                            ymin,
+                            ymax,
+                        ],
+                    )
+            else:
+                image = column_density_map(
                     gas,
-                    zoom_factor=zoom_factor,
                     image_width=image_width,
                     image_size=image_size,
                 )
-                gascontours[np.isnan(gascontours)] = 0.0
-                vmax = np.max(gascontours) / 2
-                # vmin = np.min(image[np.where(image > 0.0)])
-                vmin = vmax / 100
-                levels = (
-                    10
-                    ** (
-                        np.linspace(
-                            np.log10(vmin),
-                            np.log10(vmax),
-                            num=5,
-                        )
-                    )[1:]
-                )
-                # print(vmin, vmax)
-                # print(levels)
-                ax.contour(
+                ax.imshow(
+                    image,
                     origin="lower",
-                    levels=levels,
-                    colors="white",
-                    linewidths=0.1,
                     extent=[
                         xmin,
                         xmax,
                         ymin,
                         ymax,
                     ],
+                    cmap="gray",
                 )
-        else:
-            image = column_density_map(
-                gas,
-                image_width=image_width,
-                image_size=image_size,
+                
+            if frames > 1:
+                savefilename = (
+                    f"{imagefilename if imagefilename is not None else "test"}"
+                    f"-{frame:06d}.{imagetype}"
+                )
+            elif number_of_images > 1:
+                savefilename = (
+                    f"{imagefilename if imagefilename is not None else "test"}"
+                    f"-{imagenr:06d}.{imagetype}"
+                )
+            else:
+                savefilename = (
+                    f"{imagefilename if imagefilename is not None else "test"}"
+                    f".{imagetype}"
+                )
+            plt.savefig(
+                savefilename,
+                dpi=dpi,
             )
-
-            ax.imshow(
-                image,
-                origin="lower",
-                extent=[
-                    xmin,
-                    xmax,
-                    ymin,
-                    ymax,
-                ],
-                cmap="gray",
-            )
-
-        if frames > 1:
-            savefilename = (
-                f"{imagefilename if imagefilename is not None else "test"}"
-                f"-{frame:06i}.{imagetype}"
-            )
-        else:
-            savefilename = (
-                f"{imagefilename if imagefilename is not None else "test"}"
-                f".{imagetype}"
-            )
-        plt.savefig(
-            savefilename,
-            dpi=dpi,
-        )
 
 
 def main():
